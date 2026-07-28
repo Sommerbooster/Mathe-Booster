@@ -165,6 +165,9 @@ const TXT = {
  abschluss:"Geschafft! Danke dir – du hast gerade dabei geholfen, deinen Sommer-Plan zu bauen. Es gibt kein Bestehen und kein Durchfallen: Alles, was du konntest, sparst du dir. Den Rest packen wir gemeinsam an.",
  abschlussViel:"Und falls sich das gerade nach vielen offenen Aufgaben angefühlt hat: perfekt. Jetzt weiß dein Booster ganz genau, wo er dir helfen kann – Schritt für Schritt, in kleinen Portionen. Genau dafür ist er da.",
  morgenWeiter:"Einfach weiter, genau da, wo du warst.",
+ planFertig:"Dein Plan ist geschafft! Du hast jeden Baustein gemeistert – und bewiesen: Du bleibst dran. Mega.",
+ planFertigSchnell:"Wow – dein Plan ist geschafft, und zwar schneller als geplant! Du hast einfach weitergemacht, wenn du Lust hattest – genau so soll dein Booster funktionieren.",
+ planFertigWeiter:"Und jetzt? Der Wiederholmix hält alles frisch, was du gelernt hast – ein paar Minuten reichen. Wenn du magst, warten unten außerdem deine Bonus-Themen.",
 };
 
 /*ENGINE-START*/
@@ -397,6 +400,7 @@ function render(){
   if(S.screen==="plan") return renderPlan();
   if(S.screen==="fortschritt") return renderFortschritt();
   if(S.screen==="day") return renderDay();
+  if(S.screen==="planDone") return renderPlanDone();
   if(S.screen==="info") return renderInfo();
   renderStart();
 }
@@ -540,6 +544,7 @@ function renderAnpassen(){
     '<label class="fld">Wie lange?</label>'+opts("wochen",[2,3],c.wochen,v=>v+" Wochen")+
     '<label class="fld">Wie viele Tage pro Woche?</label>'+opts("tage",[5,6,7],c.tage,v=>v+" Tage")+
     '<label class="fld">Wie viele Minuten pro Tag?</label>'+opts("minuten",[15,20,30,45],c.minuten,v=>v+" Min.")+
+    '<p class="muted" style="font-size:.85rem;margin-top:8px">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 20 Min. mit Wiederholmix, ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Mehr Themen bekommst du über mehr Wochen oder Tage.</p>'+
     '<button class="btn block" id="mkBtn">Lernplan erstellen</button>'+
   '</div>';
   document.querySelectorAll(".cfgrow .opt").forEach(b=>b.addEventListener("click",()=>{ S.config[b.dataset.n]=+b.dataset.v; save(); renderAnpassen(); }));
@@ -568,6 +573,13 @@ function renderPlan(){
     '<button class="btn ghost" id="cfgBtn">Plan anpassen</button>'+
     '<button class="btn ghost" id="printBtn">Drucken</button></div>'+
   '</div>';
+  if(nextOpenDay(plan)===-1){
+    const card=main.querySelector(".card");
+    const done=document.createElement("div"); done.className="banner";
+    done.innerHTML='<strong>Alle Bausteine geschafft!</strong> <button class="btn small" id="doneBtn" style="margin-left:8px">Zum Abschluss</button>';
+    card.insertBefore(done, card.firstChild);
+    done.querySelector("#doneBtn").addEventListener("click",()=>show("planDone"));
+  }
   document.querySelectorAll("table.plan tr[data-tag]").forEach(tr=>tr.addEventListener("click",()=>{ S.curDay=+tr.dataset.tag; S.bonus=null; S.unit=null; show("day"); }));
   document.querySelectorAll("[data-bonus]").forEach(btn=>btn.addEventListener("click",()=>{ S.bonus={id:btn.dataset.bonus, abMittel:btn.dataset.abm==="1"}; S.curDay="bonus"; S.unit=null; show("day"); }));
   $("cfgBtn").addEventListener("click",()=>show("anpassen"));
@@ -629,6 +641,7 @@ function renderDay(){
   const plan=buildPlan(effectiveDiag(),S.config);
   let day;
   if(S.curDay==="bonus"&&S.bonus){ day={tag:"Bonus", id:S.bonus.id, abMittel:S.bonus.abMittel, block:0, thema:skillTitle(S.bonus.id)}; }
+  else if(S.curDay==="extramix"){ day={tag:"Extra-Mix", id:"MIX", thema:"Wiederholmix"}; }
   else day=plan.days.find(d=>d.tag===S.curDay);
   if(!day) return show("plan");
   if(day.id==="MIX"){ return renderMixDay(day); }
@@ -763,14 +776,42 @@ function renderMixDay(day){
   renderMixBlock(kopf, {id:null});
 }
 function renderDayDone(day){
-  if(day.tag!=="Bonus") S.daysDone[day.tag]=true;
+  if(typeof day.tag==="number") S.daysDone[day.tag]=true;
   S.unit=null; save(); confetti();
   const q=S.unit&&S.unit.gesamt?(" "+S.unit.richtig+" von "+S.unit.gesamt+" Aufgaben direkt richtig."):"";
   main.innerHTML='<div class="card"><div class="banner"><strong>Für heute geschafft!</strong>'+esc(q)+' Du hast bewiesen: Du bleibst dran. Mega.</div>'+
     '<button class="btn block" id="nxDay">Weitermachen – nächster Baustein</button>'+
     '<button class="btn ghost block" id="backPlan">Zurück zum Lernplan</button></div>';
-  $("nxDay").addEventListener("click",()=>{ const p=buildPlan(effectiveDiag(),S.config); const nx=nextOpenDay(p); if(nx>0){ S.curDay=nx; S.unit=null; show("day"); } else show("plan"); });
+  $("nxDay").addEventListener("click",()=>{ const p=buildPlan(effectiveDiag(),S.config); const nx=nextOpenDay(p); if(nx>0){ S.curDay=nx; S.unit=null; show("day"); } else show("planDone"); });
   $("backPlan").addEventListener("click",()=>show("plan"));
+}
+
+function renderPlanDone(){
+  const diag=effectiveDiag();
+  const plan=buildPlan(diag,S.config);
+  const gelernt=plan.days.filter(d=>typeof d.tag==="number"&&d.id!=="MIX"&&d.id!=="CHECK"&&S.daysDone[d.tag]).length;
+  const sitzt=SKILLS.filter(s=>diag[s.id]==="sitzt").length;
+  // schneller als geplant? Kalendertage seit Start vs. geplante Laufzeit
+  let schnell=false;
+  if(S.startedAt){ const tage=Math.ceil((Date.now()-new Date(S.startedAt).getTime())/86400000);
+    schnell = tage < S.config.wochen*7; }
+  main.innerHTML='<div class="card">'+
+    '<div class="banner"><strong><em>'+esc(schnell?TXT.planFertigSchnell:TXT.planFertig)+'</em></strong></div>'+
+    '<p><strong>'+gelernt+' Themen neu dazugeholt</strong> – zusätzlich zu den '+sitzt+' Themen, die bei deinem Check schon saßen. Dein Abschlusscheck kommt mit einem der nächsten Updates – dann siehst du deinen Vorher-nachher-Sprung schwarz auf grün.</p>'+
+    '<p>'+esc(TXT.planFertigWeiter)+'</p>'+
+    (plan.rest.length?'<div class="info"><strong>Du hast noch Luft?</strong> Diese Themen warten darauf, in deinen Plan zu rücken: '+esc(plan.rest.map(r=>r.titel).join(" · "))+'</div>'+
+      '<button class="btn block" id="mehrBtn">Nächste Themen in den Plan holen</button>':"")+
+    '<button class="btn'+(plan.rest.length?' ghost':'')+' block" id="mixBtn">Wiederholmix starten</button>'+
+    '<button class="btn ghost block" id="planBtn2">Zum Lernplan</button>'+
+  '</div>';
+  confetti();
+  if($("mehrBtn")) $("mehrBtn").addEventListener("click",()=>{
+    if(S.config.wochen<3) S.config.wochen++;
+    else if(S.config.tage<7) S.config.tage++;
+    save(); notiert("Dein Plan ist gewachsen!"); show("plan");
+  });
+  $("mixBtn").addEventListener("click",()=>{ S.curDay="extramix"; S.unit=null; show("day"); });
+  $("planBtn2").addEventListener("click",()=>show("plan"));
 }
 
 function renderFortschritt(){
@@ -790,6 +831,10 @@ function renderInfo(){
   main.innerHTML='<div class="card">'+
     '<strong>Über den Booster</strong>'+
     '<p>Der Mathe-Booster frischt genau die Mathe-Grundlagen auf, die du im neuen Schuljahr brauchst. Am Anfang steht dein Mathe-Check: kein Test, keine Note – er findet heraus, was du dir sparen kannst. Daraus entsteht dein persönlicher Lernplan mit kurzen Einheiten von 15 bis 45 Minuten.</p>'+
+    '<strong>So funktioniert dein Lernplan</strong>'+
+    '<p><strong>Wochen und Tage bestimmen, wie viele Themen in deinen Plan passen.</strong> Jeder Lerntag hat genau ein Thema; der letzte Tag jeder Woche ist ein Mix-Tag zum Wiederholen. Passt nicht alles hinein, rücken die restlichen Themen automatisch nach, sobald Platz ist.</p>'+
+    '<p><strong>Die Minuten pro Tag bestimmen, wie gründlich du jedes Thema übst</strong> – nicht, wie viele Themen du bekommst: Bei 15 Minuten lernst du das neue Thema mit den wichtigsten Übungen. Ab 20 Minuten kommt der kleine Wiederholmix aus den Vortagen dazu – der hält alles frisch. Ab 30 Minuten gibt es Extra-Übungen und ab 45 Minuten zusätzlich Knobel- und Anwendungsaufgaben.</p>'+
+    '<p>Du kannst alles jederzeit unter „Anpassen“ ändern – und wer an einem Tag Lust auf mehr hat, macht einfach mit dem nächsten Baustein weiter.</p>'+
     '<p class="muted" style="font-size:.9rem">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
     '<button class="btn block" id="homeBtn">Zur Startseite</button>'+
   '</div>';
