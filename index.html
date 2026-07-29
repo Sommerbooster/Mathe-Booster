@@ -4,9 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FBF8F2">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mathe-Booster">
 <title>Mathe-Booster</title>
 <style>
 :root{
@@ -802,7 +799,7 @@ function renderPlanDone(){
     '<p><strong>'+gelernt+' Themen neu dazugeholt</strong> – zusätzlich zu den '+sitzt+' Themen, die bei deinem Check schon saßen. Dein Abschlusscheck kommt mit einem der nächsten Updates – dann siehst du deinen Vorher-nachher-Sprung schwarz auf grün.</p>'+
     '<p>'+esc(TXT.planFertigWeiter)+'</p>'+
     (plan.rest.length?'<div class="info"><strong>Du hast noch Luft?</strong> Diese Themen warten darauf, in deinen Plan zu rücken: '+esc(plan.rest.map(r=>r.titel).join(" · "))+'</div>'+
-      '<button class="btn block" id="mehrBtn">Nächste Themen in den Plan holen</button>':"")+
+      ((S.config.wochen<3||S.config.tage<7)?'<button class="btn block" id="mehrBtn">Nächste Themen in den Plan holen</button>':'<p class="muted" style="font-size:.9rem">Dein Plan ist schon auf Maximum – die Themen erreichst du direkt über den Lernplan, sobald du Tage frei machst, oder einfach über „Plan anpassen“.</p>'):"")+
     '<button class="btn'+(plan.rest.length?' ghost':'')+' block" id="mixBtn">Wiederholmix starten</button>'+
     '<button class="btn ghost block" id="planBtn2">Zum Lernplan</button>'+
   '</div>';
