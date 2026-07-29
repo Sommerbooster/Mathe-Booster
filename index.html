@@ -54,6 +54,7 @@ label.fld{display:block;font-weight:600;margin-top:var(--space-3);color:var(--co
 .pill{display:inline-block;padding:3px 12px;border-radius:999px;font-size:.8rem;background:#FAF5E9;border:1px solid var(--secondary);color:var(--color-heading);}
 .bar{height:9px;background:var(--color-border);border-radius:999px;overflow:hidden;margin:10px 0 var(--space-2);}
 .bar>div{height:100%;background:var(--accent);width:0;transition:width .3s;}
+.bar.koralle>div{background:var(--koralle);}
 .prompt{font-size:1.35rem;font-weight:700;color:var(--color-heading);margin:var(--space-2) 0;line-height:1.35;}
 .ex{font-style:italic;color:var(--secondary);margin-bottom:var(--space-2);}
 input[type=text]{width:100%;padding:12px;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-size:1.1rem;font-family:inherit;}
@@ -154,7 +155,7 @@ const TASKS = [
 
 const TXT = {
  begruessung1:"Bevor dein Booster startet: Finde heraus, was du dir sparen kannst! Das hier soll dir helfen, unnötiges Üben von Dingen zu vermeiden, die du schon kannst. Jede Aufgabe, die du sicher löst, streicht Übungen von deinem Plan.",
- begruessung2:"Rechne auf Papier oder direkt auf der Rechenfläche – beides ist völlig okay. Eingetragen wird nur das Ergebnis.",
+ begruessung2:"Rechne auf Papier oder direkt auf der Rechenfläche – mach es einfach so, wie es für dich am besten passt. Eingetragen wird nur das Ergebnis.",
  begruessung3:"Wenn ihr ein Thema in der Schule noch nicht hattet, tippe einfach auf „Hatten wir noch nicht“ – das ist völlig okay!",
  nachHwnn:"Alles klar! Das Thema kommt als Bonus in deinen Plan – du kannst also später entscheiden, ob du dir das noch anschaust. So ist es kein Muss, sondern dein Vorsprung fürs neue Schuljahr, wenn du Lust dazu hast.",
  hwnnHinweis:"Übrigens: „Hatten wir noch nicht“ heißt manchmal auch „hatten wir, aber vergessen“ – gerade nach den Ferien ganz normal. Die meisten Themen hier kommen in allen Bundesländern dran, nur wenige wirklich später. Wenn du unsicher bist: Probier die Aufgabe einfach – schiefgehen kann nichts.",
@@ -410,9 +411,10 @@ function renderStart(){
   main.innerHTML=
   '<div class="card">'+
     '<span class="pill">Dein Mathe-Check</span>'+
-    '<p style="margin-top:14px"><em>'+esc(TXT.begruessung1)+'</em></p>'+
-    '<p><em>'+esc(TXT.begruessung2)+'</em></p>'+
-    '<p><em>'+esc(TXT.begruessung3)+'</em></p>'+
+    '<p style="margin-top:14px">'+esc(TXT.begruessung1)+'</p>'+
+    '<p>'+esc(TXT.begruessung2)+'</p>'+
+    '<p>'+esc(TXT.begruessung3)+'</p>'+
+    '<p><strong>Los geht’s!</strong></p>'+
   '</div>'+
   '<div class="card">'+
     (S.done
@@ -544,7 +546,7 @@ function renderAnpassen(){
     '<label class="fld">Wie lange?</label>'+opts("wochen",[2,3],c.wochen,v=>v+" Wochen")+
     '<label class="fld">Wie viele Tage pro Woche?</label>'+opts("tage",[5,6,7],c.tage,v=>v+" Tage")+
     '<label class="fld">Wie viele Minuten pro Tag?</label>'+opts("minuten",[15,20,30,45],c.minuten,v=>v+" Min.")+
-    '<p class="muted" style="font-size:.85rem;margin-top:8px">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 20 Min. mit Wiederholmix, ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Mehr Themen bekommst du über mehr Wochen oder Tage.</p>'+
+    '<p class="muted" style="font-size:.85rem;margin-top:var(--space-3)">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 20 Min. mit Wiederholmix, ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Mehr Themen bekommst du über mehr Wochen oder Tage.</p>'+
     '<button class="btn block" id="mkBtn">Lernplan erstellen</button>'+
   '</div>';
   document.querySelectorAll(".cfgrow .opt").forEach(b=>b.addEventListener("click",()=>{ S.config[b.dataset.n]=+b.dataset.v; save(); renderAnpassen(); }));
@@ -820,7 +822,7 @@ function renderFortschritt(){
   const sitzt=diag?Object.values(diag).filter(s=>s==="sitzt").length:0;
   main.innerHTML='<div class="card">'+
     '<strong>Dein Fortschritt</strong>'+
-    '<div class="bar"><div style="width:'+Math.round(100*n/TASKS.length)+'%"></div></div>'+
+    '<div class="bar koralle"><div style="width:'+Math.round(100*n/TASKS.length)+'%"></div></div>'+
     '<p>'+(S.done?'Mathe-Check geschafft – '+sitzt+' von '+SKILLS.length+' Themen sitzen schon. '+(S.planCreated?'Dein Plan steht.':'Als Nächstes: Lernplan erstellen.'):'Mathe-Check: '+n+' von '+TASKS.length+' Aufgaben notiert.')+'</p>'+
     '<button class="btn block" id="goBtn">'+(S.done?(S.planCreated?'Zum Lernplan':'Lernplan erstellen'):'Weitermachen')+'</button>'+
   '</div>';
@@ -830,11 +832,11 @@ function renderFortschritt(){
 function renderInfo(){
   main.innerHTML='<div class="card">'+
     '<strong>Über den Booster</strong>'+
-    '<p>Der Mathe-Booster frischt genau die Mathe-Grundlagen auf, die du im neuen Schuljahr brauchst. Am Anfang steht dein Mathe-Check: kein Test, keine Note – er findet heraus, was du dir sparen kannst. Daraus entsteht dein persönlicher Lernplan mit kurzen Einheiten von 15 bis 45 Minuten.</p>'+
+    '<p>Der Mathe-Booster frischt genau die Mathe-Grundlagen auf, die du im neuen Schuljahr brauchst. Am Anfang steht dein Mathe-Check, er findet heraus, was du dir sparen kannst, ohne Bewertung. Daraus entsteht dein persönlicher Lernplan mit kurzen Einheiten wahlweise von 15 bis 45 Minuten.</p>'+
     '<strong>So funktioniert dein Lernplan</strong>'+
     '<p><strong>Wochen und Tage bestimmen, wie viele Themen in deinen Plan passen.</strong> Jeder Lerntag hat genau ein Thema; der letzte Tag jeder Woche ist ein Mix-Tag zum Wiederholen. Passt nicht alles hinein, rücken die restlichen Themen automatisch nach, sobald Platz ist.</p>'+
     '<p><strong>Die Minuten pro Tag bestimmen, wie gründlich du jedes Thema übst</strong> – nicht, wie viele Themen du bekommst: Bei 15 Minuten lernst du das neue Thema mit den wichtigsten Übungen. Ab 20 Minuten kommt der kleine Wiederholmix aus den Vortagen dazu – der hält alles frisch. Ab 30 Minuten gibt es Extra-Übungen und ab 45 Minuten zusätzlich Knobel- und Anwendungsaufgaben.</p>'+
-    '<p>Du kannst alles jederzeit unter „Anpassen“ ändern – und wer an einem Tag Lust auf mehr hat, macht einfach mit dem nächsten Baustein weiter.</p>'+
+    '<p>Du kannst alles jederzeit unter <strong>„Anpassen“</strong> ändern – und wer an einem Tag Lust auf mehr hat, macht einfach mit dem nächsten Baustein weiter.</p>'+
     '<p class="muted" style="font-size:.9rem">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
     '<button class="btn block" id="homeBtn">Zur Startseite</button>'+
   '</div>';
