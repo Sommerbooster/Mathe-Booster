@@ -121,7 +121,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "Beta 1.2 · 29.07.2026";
+const APP_VERSION = "Beta 1.3 · 29.07.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
@@ -945,6 +945,9 @@ function renderInfo(){
     '<p><strong>Wochen und Tage bestimmen, wie viele Themen in deinen Plan passen.</strong> Jeder Lerntag hat genau ein Thema; der letzte Tag jeder Woche ist ein Mix-Tag zum Wiederholen. Passt nicht alles hinein, rücken die restlichen Themen automatisch nach, sobald Platz ist.</p>'+
     '<p><strong>Die Minuten pro Tag bestimmen, wie gründlich du jedes Thema übst</strong> – nicht, wie viele Themen du bekommst: Bei 15 Minuten lernst du das neue Thema mit den wichtigsten Übungen. Ab 20 Minuten kommt der kleine Wiederholmix aus den Vortagen dazu – der hält alles frisch. Ab 30 Minuten gibt es Extra-Übungen und ab 45 Minuten zusätzlich Knobel- und Anwendungsaufgaben.</p>'+
     '<p>Du kannst alles jederzeit unter <strong>„Anpassen“</strong> ändern – und wer an einem Tag Lust auf mehr hat, macht einfach mit dem nächsten Baustein weiter.</p>'+
+    '<strong>Immer die neueste Version</strong>'+
+    '<p>Dein Booster wird laufend verbessert – neue Versionen kommen automatisch, aber nur, wenn die App neu geöffnet wird. Lass sie deshalb nicht einfach tagelang offen liegen: <strong>Öffne sie vor jedem Üben neu über deinen Link oder dein Lesezeichen</strong> (oder lade die Seite einmal neu). Keine Sorge: Dein Fortschritt bleibt dabei immer erhalten – beim Neuöffnen geht nichts verloren.</p>'+
+    '<p>Nur eines bitte nicht: die Browserdaten löschen (Verlauf/Websitedaten) – dort ist dein Fortschritt gespeichert. Welche Version du gerade hast, siehst du unten an der Versionsnummer.</p>'+
     '<p class="muted" style="font-size:.9rem">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
     '<p class="muted" style="font-size:.85rem">Version: '+esc(APP_VERSION)+'</p>'+
     '<button class="btn block" id="homeBtn">Zur Startseite</button>'+
