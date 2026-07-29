@@ -138,7 +138,7 @@ const TASKS = [
  {nr:16, teil:1, text:"Eine Waschmaschine kostet in einer Rabattaktion bei 20 % Ermäßigung noch 560 €. Was kostete sie vorher?", type:"E", label:"Antwort", unit:"€", hwnn:true},
  {nr:17, teil:1, text:"3 kg Äpfel kosten 5,40 €. Was kosten 5 kg?", type:"E", label:"Antwort", unit:"€", hwnn:true},
  {nr:18, teil:1, text:"6 Bauarbeiter brauchen für eine Mauer 10 Tage. Wie lange brauchen 4 Bauarbeiter?", type:"E", label:"Antwort", unit:"Tage", hwnn:true},
- {nr:19, teil:2, text:"(x + 3)² = x² + ▢ x + ▢", type:"GAP2", gaps:["x² +","x +"], hwnn:true},
+ {nr:19, teil:2, text:"(x + 3)² = x² + ▢ x + ▢", type:"GAP2", pre:"x² +", gaps:["x +",""], hwnn:true},
  {nr:20, teil:2, text:"2³ · 2⁴ = 2^▢", type:"E", label:"2 hoch", hwnn:true},
  {nr:21, teil:2, text:"Zwei Geraden schneiden sich. Der eine Winkel ist viermal so groß wie sein Nebenwinkel α. Wie groß ist α?", type:"E", label:"α =", unit:"°", hwnn:true},
  {nr:22, teil:2, text:"Bestimme den Median: 12, 3, 15, 8, 7", type:"E", label:"Antwort", hwnn:true},
@@ -308,6 +308,7 @@ if(!S.config) S.config={wochen:2,tage:5,minuten:20};
 if(!S.daysDone) S.daysDone={};
 if(!S.netz) S.netz={};
 if(!S.netzPlan) S.netzPlan=[];
+if(!S.mixDone) S.mixDone={}; // im Mix bereits richtig gelöste Aufgaben (kommen nicht erneut dran)
 
 /* Sicherheitsnetz: Fertigkeiten, die im Mix 2× danebenlagen, kommen zurück in den Plan */
 function effectiveDiag(){
@@ -452,7 +453,7 @@ function renderTask(){
       (t.unit?'<span class="unit">'+esc(t.unit)+'</span>':"")+'</div>';
   } else if(t.type==="GAP2"){
     const v=S.answers[t.nr]||["",""];
-    inner+='<div class="gapfields" style="margin-top:16px"><input type="text" id="g1" value="'+esc(v[0]||"")+'"><span>'+esc(t.gaps[0])+'</span><input type="text" id="g2" value="'+esc(v[1]||"")+'"><span>'+esc(t.gaps[1])+'</span></div>';
+    inner+='<div class="gapfields" style="margin-top:16px">'+(t.pre?'<span>'+esc(t.pre)+'</span>':'')+'<input type="text" id="g1" value="'+esc(v[0]||"")+'"><span>'+esc(t.gaps[0])+'</span><input type="text" id="g2" value="'+esc(v[1]||"")+'"><span>'+esc(t.gaps[1])+'</span></div>';
   } else if(t.type==="MC"){
     inner+='<div id="opts">'+t.opts.map((o,k)=>'<button class="opt'+(S.answers[t.nr]===k?" active":"")+'" data-k="'+k+'">'+esc(o)+'</button>').join("")+'</div>';
   }
@@ -587,23 +588,108 @@ function renderPlan(){
 function nextOpenDay(plan){ for(const d of plan.days){ if(d.id!=="CHECK"&&!S.daysDone[d.tag]) return d.tag; } return -1; }
 
 /* ---------- Lerneinheiten-Player (M2.4) ---------- */
-function solMatches(sol, input){
-  // Vergleich nach Eingabekonventionen: Zahl-/Bruch-Kandidaten aus der Lösung sammeln
-  // (Lösungsanfang + jeder Wert nach einem "=", z. B. "2⁵ = 32" oder "U = 24 cm; A = 36 cm²")
-  const s=String(sol).replace(/−/g,"-");
-  const inFrac=parseFracValue(String(input));
-  if(!isFinite(inFrac)) return null;
-  const cands=[];
-  const add=(t,lead)=>{ if(!t)return;
-    if(lead && /^-?\d+(?:,\d+)?[⁰¹²³⁴⁵⁶⁷⁸⁹^]/.test(t.trim())) return; // Potenz wie "2⁵ = …": Basis ist kein Ergebnis
-    const f=t.match(/^-?\d+\/\d+/); const n=t.match(/^-?\d+(?:,\d+)?/);
-    if(f){ const [x,y]=f[0].split("/").map(Number); if(y)cands.push(x/y); }
-    else if(n){ cands.push(parseFloat(n[0].replace(",","."))); } };
-  add(s.trim(), true);
-  for(const m of s.matchAll(/=\s*(-?[\d,\/]+)/g)) add(m[1]);
-  if(!cands.length) return null;
-  return cands.some(v=>isFinite(v)&&Math.abs(inFrac-v)<0.005);
+/* Antwort-Matching (erweitert nach Beta-Feedback 29.07.2026):
+   Terme (^-Notation, Groß/klein, Reihenfolge), Textantworten mit Klammerzusatz,
+   Aufzählungen (reihenfolgeunabhängig), Name=Wert-Antworten (Winkel, auch ausgeschrieben) */
+/*MATCH-START*/
+const GREEK={alpha:"α",alfa:"α",beta:"β",gamma:"γ",delta:"δ",epsilon:"ε",lambda:"λ",my:"μ",mu:"μ",phi:"φ"};
+function normTxt(t){ return String(t).toLowerCase().replace(/−/g,"-").replace(/\s+/g," ").replace(/[.!?]\s*$/,"").trim(); }
+function termNorm(t){
+  return String(t).toLowerCase().replace(/−/g,"-").replace(/\s+/g,"")
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g,m=>"^"+[...m].map(c=>"⁰¹²³⁴⁵⁶⁷⁸⁹".indexOf(c)).join(""))
+    .replace(/[·*]/g,"");
 }
+function isTermLike(t){
+  const n=termNorm(t);
+  return /^[+\-]?[0-9a-zα-ω^+\-]+$/.test(n) && /[a-zα-ω]/.test(n) && !/[a-zα-ω]{5,}/.test(n);
+}
+function monoKey(m){ // "16x^2" -> "16|x^2" · "-8xy" -> "-8|x^1,y^1" · "y^2" -> "1|y^2"
+  let sign=1, t=m;
+  if(t[0]==="+") t=t.slice(1); else if(t[0]==="-"){ sign=-1; t=t.slice(1); }
+  const cm=t.match(/^\d+(?:,\d+)?/); const coef=cm?parseFloat(cm[0].replace(",",".")):1;
+  t=cm?t.slice(cm[0].length):t;
+  const vars=[]; const re=/([a-zα-ω])(?:\^(\d+))?/g; let mm;
+  while((mm=re.exec(t))) vars.push(mm[1]+"^"+(mm[2]||"1"));
+  vars.sort();
+  return (sign*coef)+"|"+vars.join(",");
+}
+function termEq(a,b){
+  const split=t=>{ const n=termNorm(t); if(/[()=\/]/.test(n)) return null;
+    const parts=n.replace(/([+\-])/g,"§$1").split("§").filter(Boolean);
+    return parts.length?parts.map(monoKey).sort():null; };
+  const pa=split(a), pb=split(b);
+  if(!pa||!pb) return null;
+  return pa.length===pb.length && pa.every((x,i)=>x===pb[i]);
+}
+function parsePairs(t){ // "β = 40°, α = 80°" / "Alpha=80°, Beta=40°" -> {β:40, α:80}
+  const parts=String(t).replace(/−/g,"-").split(/[;,]/).map(x=>x.trim()).filter(Boolean);
+  if(!parts.length) return null;
+  const out={};
+  for(const p of parts){
+    const m=p.match(/^(?:winkel\s+)?([A-Za-zÄÖÜäöüα-ωΑ-Ω][A-Za-zäöü]*)\s*=\s*(-?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)\s*(?:°|€|%|[a-zA-Z]{1,3}[²³]?)?$/i);
+    if(!m) return null;
+    let k=m[1].toLowerCase(); if(GREEK[k]) k=GREEK[k];
+    const v=parseFracValue(m[2].replace(/\s/g,"")); if(!isFinite(v)) return null;
+    out[k]=v;
+  }
+  return out;
+}
+function splitEnum(t){ // kurze Aufzählung "sss, sws, wsw, Ssw" -> normierte sortierte Teile
+  const ps=String(t).split(/[,;]|\s+und\s+/i).map(x=>x.trim()).filter(Boolean);
+  if(ps.length<2 || ps.some(p=>/\s/.test(p)||p.length>12) || !ps.some(p=>/[a-zA-Zα-ωÄÖÜäöü]/.test(p))) return null;
+  return ps.map(normTxt).sort();
+}
+function numericInput(t){ // Zahl/Bruch/gemischte Zahl + optional kurze Einheit
+  return /^-?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+|\s+\d+\/\d+)?\s*(?:°|€|%|[a-zA-Z]{1,3}[²³]?)?$/.test(String(t).replace(/−/g,"-").trim());
+}
+function solMatches(sol, input){
+  const s=String(sol).replace(/−/g,"-").trim();
+  const inp=String(input).replace(/−/g,"-").trim();
+  // 1) Name=Wert-Antworten (z. B. Winkel): reihenfolgeunabhängig, griechisch auch ausgeschrieben
+  const ps=parsePairs(s), pi=parsePairs(inp);
+  if(ps&&pi){
+    const ks=Object.keys(ps), ki=Object.keys(pi);
+    if(ks.length===ki.length&&ks.every(k=>k in pi)) return ks.every(k=>Math.abs(ps[k]-pi[k])<0.005);
+    return null; // Namen passen nicht zusammen -> lieber selbst vergleichen
+  }
+  // 2) Aufzählungen: als Menge vergleichen (Reihenfolge und Groß/klein egal)
+  const es=splitEnum(s);
+  if(es){
+    const ei=splitEnum(inp);
+    if(ei) return es.length===ei.length&&es.every((x,i)=>x===ei[i]);
+  }
+  // 3) Zahlen/Brüche: Kandidaten aus der Lösung (Anfang + Werte nach "=", keine Potenz-Basen, keine Variablen-Koeffizienten)
+  if(numericInput(inp)){
+    const inFrac=parseFracValue(inp.replace(/\s*(?:°|€|%|[a-zA-Z]{1,3}[²³]?)$/,""));
+    if(isFinite(inFrac)){
+      const cands=[];
+      const add=(t,lead)=>{ if(!t)return; t=t.trim();
+        if(lead && /^-?\d+(?:,\d+)?[⁰¹²³⁴⁵⁶⁷⁸⁹^]/.test(t)) return; // "2⁵ = …": Basis ist kein Ergebnis
+        const f=t.match(/^-?\d+\/\d+/); const n=t.match(/^-?\d+(?:,\d+)?/);
+        if(f&&!/^[a-zα-ω]/i.test(t.slice(f[0].length))){ const [x,y]=f[0].split("/").map(Number); if(y)cands.push(x/y); }
+        else if(n&&!/^[a-zα-ω]/i.test(t.slice(n[0].length))){ cands.push(parseFloat(n[0].replace(",","."))); } }; // "16x²…": Koeffizient ist kein Ergebnis
+      add(s, true);
+      for(const m of s.matchAll(/=\s*(-?[\d,\/]+)([a-zα-ω]?)/gi)){ if(!m[2]) add(m[1]); }
+      if(cands.length) return cands.some(v=>isFinite(v)&&Math.abs(inFrac-v)<0.005);
+      if(isTermLike(s)) return false; // reine Zahl als Antwort auf einen Term ist falsch
+    }
+  }
+  // 4) Terme: normalisieren (^ und Hochzahlen, Groß/klein, ·) und als Monom-Menge vergleichen
+  if(isTermLike(s)&&isTermLike(inp)){
+    const r=termEq(s,inp);
+    if(r!==null) return r;
+  }
+  // 5) Text: Klammerzusatz der Lösung ist optional; kurze Textantworten eindeutig werten
+  const core=normTxt(s.replace(/\s*\([^)]*\)/g," "));
+  const ni=normTxt(inp.replace(/\s*\([^)]*\)/g," "));
+  if(core&&(ni===core||ni===normTxt(s))) return true;
+  const W=["ja","nein","richtig","falsch"];
+  const first=core.split(/[\s,]+/)[0];
+  if(W.includes(first)&&W.includes(ni)) return first===ni;
+  if(core&&core.split(" ").length<=2&&!/\d/.test(core)&&/[a-zα-ωäöü]/.test(ni)) return false;
+  return null;
+}
+/*MATCH-END*/
 function unitSteps(skill, abMittel, minuten, blockIdx){
   const c=CONTENT[skill]; if(!c||!c.kerne||!c.kerne.length) return null;
   const kern=c.kerne[Math.min(blockIdx||0, c.kerne.length-1)];
@@ -623,6 +709,7 @@ function unitSteps(skill, abMittel, minuten, blockIdx){
     c.transfer.slice(0,2).forEach(t=>steps.push({typ:"aufgabe",u:{stufe:"Transfer",aufgabe:t.aufgabe,loesung:t.loesung,hinweis:t.hinweis},extra:true}));
   return steps;
 }
+function mixKey(it){ return it.skill+"|"+it.aufgabe; }
 function mixPool(exceptSkill){
   const diag=effectiveDiag(); const pool=[];
   for(const sk of SKILLS){
@@ -630,11 +717,16 @@ function mixPool(exceptSkill){
     const learned=Object.keys(S.daysDone).length>0; // vereinfachte v1: gelernte + sitzende F-Themen
     if(diag[sk.id]==="sitzt"||learned) CONTENT[sk.id].wpool.forEach(w=>pool.push({skill:sk.id,...w}));
   }
-  // stabil mischen über Tag als Seed
-  const seed=(S.curDay||1)*7919; const out=[];
-  const idx=pool.map((_,i)=>i).sort((a,b)=>((a*seed)%104729)-((b*seed)%104729));
-  for(const i of idx.slice(0,4)) out.push(pool[i]);
-  return out;
+  // stabil mischen (Seed: Tag + Anzahl bereits gemeisterter Mix-Aufgaben), dann:
+  // Aufgaben, die schon einmal richtig gelöst wurden, kommen NICHT erneut dran,
+  // solange es noch ungespielte Alternativen gibt (Beta-Feedback 29.07.).
+  const dayN=typeof S.curDay==="number"?S.curDay:97;
+  const seed=dayN*7919+Object.keys(S.mixDone||{}).length*104651+7;
+  const idx=pool.map((_,i)=>i).sort((a,b)=>(((a+1)*seed)%104729)-(((b+1)*seed)%104729));
+  const fresh=[], done=[];
+  for(const i of idx) ((S.mixDone||{})[mixKey(pool[i])]?done:fresh).push(pool[i]);
+  // erst wenn ALLE Aufgaben einmal gemeistert sind, darf wiederholt werden (dann ist Wiederholen der Zweck)
+  return (fresh.length?fresh:done).slice(0,4);
 }
 function renderDay(){
   const plan=buildPlan(effectiveDiag(),S.config);
@@ -738,11 +830,19 @@ function renderDay(){
   $("nx").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
 }
 function renderMixBlock(kopf, day){
-  const items=mixPool(day.id);
+  if(!S.unit.mixItems){ S.unit.mixItems=mixPool(day.id); save(); } // Auswahl pro Tag festhalten
+  const items=S.unit.mixItems;
   if(!items.length){ S.unit.step++; save(); return renderDay(); }
   const i=S.unit.mixIdx||0;
   if(i>=items.length){ S.unit.step++; S.unit.mixIdx=0; save(); return renderDay(); }
   const it=items[i];
+  const weiter=()=>{ S.unit.mixIdx=(S.unit.mixIdx||0)+1; save(); renderDay(); window.scrollTo(0,0); };
+  const merkRichtig=()=>{ S.mixDone[mixKey(it)]=true; };
+  const merkFalsch=(fbAdd)=>{
+    S.netz[it.skill]=(S.netz[it.skill]||0)+1;
+    if(S.netz[it.skill]>=2&&!S.netzPlan.includes(it.skill)){ S.netzPlan.push(it.skill);
+      fbAdd.push('<div class="info">Dieses Thema nehmen wir sicherheitshalber nochmal in deinen Plan – kein Rückschritt, nur kurz auffrischen.</div>'); }
+  };
   main.innerHTML='<div class="card">'+kopf+'<span class="pill">Wiederholmix</span>'+
     '<div class="prompt">'+esc(it.aufgabe)+'</div>'+
     '<label class="fld" for="uans">Ergebnis</label><input type="text" id="uans" autocomplete="off">'+
@@ -751,24 +851,31 @@ function renderMixBlock(kopf, day){
   $("uok").addEventListener("click",()=>{
     const val=$("uans").value.trim(); if(val==="") return $("uans").focus();
     const res=solMatches(it.loesung,val);
-    let fb;
-    if(res===true){ fb='<div class="banner"><strong>Sitzt!</strong> '+esc(it.loesung)+'</div>'; }
-    else { fb='<div class="warn"><strong>Noch nicht ganz</strong> – richtig ist: '+esc(it.loesung)+'</div>';
-      S.netz[it.skill]=(S.netz[it.skill]||0)+1;
-      if(S.netz[it.skill]>=2&&!S.netzPlan.includes(it.skill)){ S.netzPlan.push(it.skill);
-        fb+='<div class="info">Dieses Thema nehmen wir sicherheitshalber nochmal in deinen Plan – kein Rückschritt, nur kurz auffrischen.</div>'; }
-    }
-    save();
-    $("feedback").innerHTML=fb+'<button class="btn block" id="nx2">Weiter</button>';
     $("uok").disabled=true;
-    $("nx2").addEventListener("click",()=>{ S.unit.mixIdx=(S.unit.mixIdx||0)+1; save(); renderDay(); window.scrollTo(0,0); });
+    if(res===true){ merkRichtig(); save();
+      $("feedback").innerHTML='<div class="banner"><strong>Sitzt!</strong> '+esc(it.loesung)+'</div><button class="btn block" id="nx2">Weiter</button>';
+      $("nx2").addEventListener("click",weiter);
+    } else if(res===false){ const adds=[]; merkFalsch(adds); save();
+      $("feedback").innerHTML='<div class="warn"><strong>Noch nicht ganz</strong> – richtig ist: '+esc(it.loesung)+'</div>'+adds.join("")+'<button class="btn block" id="nx2">Weiter</button>';
+      $("nx2").addEventListener("click",weiter);
+    } else { // nicht automatisch prüfbar -> Selbstabgleich statt pauschalem "falsch"
+      $("feedback").innerHTML='<div class="info"><strong>Vergleiche selbst – Lösung: '+esc(it.loesung)+'</strong></div>'+
+        '<p style="margin-top:10px"><strong>Hattest du es richtig?</strong></p>'+
+        '<div class="row"><button class="btn" id="mxJa">Hatte ich richtig</button>'+
+        '<button class="btn ghost" id="mxNein">Noch nicht ganz</button></div><div id="fb2"></div>';
+      $("mxJa").addEventListener("click",()=>{ merkRichtig(); save(); weiter(); });
+      $("mxNein").addEventListener("click",()=>{ const adds=[]; merkFalsch(adds); save();
+        if(adds.length){ $("fb2").innerHTML=adds.join("")+'<button class="btn block" id="nx3">Weiter</button>'; $("mxJa").disabled=true; $("mxNein").disabled=true; $("nx3").addEventListener("click",weiter); }
+        else weiter(); });
+    }
   });
-  $("uskip").addEventListener("click",()=>{ S.unit.mixIdx=(S.unit.mixIdx||0)+1; save(); renderDay(); window.scrollTo(0,0); });
+  $("uskip").addEventListener("click",weiter);
 }
 function renderMixDay(day){
   if(!S.unit||S.unit.tag!==day.tag){ S.unit={tag:day.tag, skill:"MIX", step:0, mixIdx:0}; save(); }
   const kopf='<div class="row" style="justify-content:space-between"><span class="pill">Tag '+day.tag+' · Mix-Tag</span></div>';
-  const items=mixPool(null);
+  if(!S.unit.mixItems){ S.unit.mixItems=mixPool(null); save(); }
+  const items=S.unit.mixItems;
   const i=S.unit.mixIdx||0;
   if(!items.length){ main.innerHTML='<div class="card">'+kopf+'<div class="info">Noch nichts zum Mischen – lerne erst ein paar Themen, dann füllt sich dein Mix.</div><button class="btn block" id="backPlan">Zurück zum Lernplan</button></div>'; return $("backPlan").addEventListener("click",()=>show("plan")); }
   if(i>=items.length){ return renderDayDone(day); }
