@@ -122,7 +122,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "Beta 1.5 · 09.08.2026";
+const APP_VERSION = "Beta 1.8 · 09.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
@@ -314,14 +314,32 @@ const CONTENT = {"F1": {"id": "F1", "titel": "Rechnen ohne Stolpern", "kerne": [
 
 
 /* ---------- Zustand ---------- */
-const STORE="mathebooster_check_v1";
-let S = load() || {screen:"start", idx:0, motivation:null, answers:{}, hwnn:{}, probe:{}, strokes:{}, startedAt:null, teil2StartedAt:null, hwnnHintSeen:false, done:false, pausedAfterTeil1:false, config:{wochen:2,tage:5,minuten:20}, planCreated:false, daysDone:{}, netz:{}, netzPlan:[], curDay:null, unit:null};
-if(!S.probe) S.probe={};
-if(!S.config) S.config={wochen:2,tage:5,minuten:20};
-if(!S.daysDone) S.daysDone={};
-if(!S.netz) S.netz={};
-if(!S.netzPlan) S.netzPlan=[];
-if(!S.mixDone) S.mixDone={}; // im Mix bereits richtig gelöste Aufgaben (kommen nicht erneut dran)
+/* ---------- Profile (Muster: Vokabel-App) ---------- */
+const STORE_BASE="mathebooster_check_v1";
+function profiles(){ try{ return JSON.parse(localStorage.getItem("mathebooster_profiles")||"[]"); }catch(e){ return []; } }
+function setProfiles(p){ try{ localStorage.setItem("mathebooster_profiles", JSON.stringify(p)); }catch(e){} }
+let PID=localStorage.getItem("mathebooster_active")||null;
+if(PID && !profiles().find(p=>p.id===PID)) PID=null;
+function storeKey(){ return STORE_BASE+"_"+PID; }
+let PROF_VIEW=false; // Profil-Screen über den Nav-Button geöffnet
+
+function defaultState(){ return {screen:"start", idx:0, motivation:null, answers:{}, hwnn:{}, probe:{}, strokes:{}, startedAt:null, teil2StartedAt:null, hwnnHintSeen:false, done:false, pausedAfterTeil1:false, config:{wochen:2,tage:5,minuten:20}, planCreated:false, daysDone:{}, netz:{}, netzPlan:[], curDay:null, unit:null, mixDone:{}}; }
+let S=null;
+function initS(){
+  S = load() || defaultState();
+  if(!S.probe) S.probe={};
+  if(!S.config) S.config={wochen:2,tage:5,minuten:20};
+  if(!S.daysDone) S.daysDone={};
+  if(!S.netz) S.netz={};
+  if(!S.netzPlan) S.netzPlan=[];
+  if(!S.mixDone) S.mixDone={}; // im Mix bereits richtig gelöste Aufgaben (kommen nicht erneut dran)
+  save();
+}
+function selectProfile(id){
+  PID=id; localStorage.setItem("mathebooster_active",id); PROF_VIEW=false;
+  initS(); render(); window.scrollTo(0,0);
+  try{ history.replaceState({mb:histSnap()},""); }catch(e){} // Basis-Eintrag für die Browser-Pfeile
+}
 
 /* Sicherheitsnetz: Fertigkeiten, die im Mix 2× danebenlagen, kommen zurück in den Plan */
 function effectiveDiag(){
@@ -330,8 +348,8 @@ function effectiveDiag(){
   return d;
 }
 function skillTitle(id){ const sk=SKILLS.find(s=>s.id===id); return sk?sk.titel:id; }
-function load(){ try{ return JSON.parse(localStorage.getItem(STORE)); }catch(e){ return null; } }
-function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+function load(){ try{ return JSON.parse(localStorage.getItem(storeKey())); }catch(e){ return null; } }
+function save(){ try{ if(PID&&S) localStorage.setItem(storeKey(), JSON.stringify(S)); }catch(e){} }
 
 /* ---------- Helpers ---------- */
 const $=id=>document.getElementById(id);
@@ -400,9 +418,27 @@ function mountScratch(container, nr){
 }
 
 /* ---------- Screens ---------- */
-function show(screen){ S.screen=screen; save(); render(); window.scrollTo(0,0); }
+/* Browser-Pfeile vor/zurück (Beta-Feedback Annette 09.08.): jeder Schritt landet in der
+   Browser-History, popstate stellt den Zustand wieder her – so funktionieren die Pfeile
+   und die Wischgeste auf dem Handy, statt die App zu verlassen. */
+let HIST_APPLY=false;
+function histSnap(){ return {screen:S?S.screen:null, idx:S?S.idx:0, curDay:S?S.curDay:null,
+  ustep:(S&&S.unit)?S.unit.step:null, midx:(S&&S.unit)?(S.unit.mixIdx||0):null, tag:(S&&S.unit)?S.unit.tag:null}; }
+function pushHist(){ if(HIST_APPLY||!PID||!S) return; try{ history.pushState({mb:histSnap()},""); }catch(e){} }
+window.addEventListener("popstate",e=>{
+  const st=e.state&&e.state.mb; if(!st||!st.screen||!PID) return;
+  if(!S) initS();
+  HIST_APPLY=true; PROF_VIEW=false;
+  S.screen=st.screen; S.idx=st.idx||0; S.curDay=st.curDay;
+  if(S.screen==="day"&&S.unit&&st.ustep!=null&&S.unit.tag===st.tag){ S.unit.step=st.ustep; S.unit.mixIdx=st.midx||0; }
+  save(); render(); window.scrollTo(0,0);
+  HIST_APPLY=false;
+});
+function show(screen){ S.screen=screen; save(); render(); window.scrollTo(0,0); pushHist(); }
 
 function render(){
+  if(!PID||PROF_VIEW) return renderProfiles();
+  if(!S) initS();
   setStatus();
   if(S.screen==="start") return renderStart();
   if(S.screen==="task") return renderTask();
@@ -417,14 +453,50 @@ function render(){
   renderStart();
 }
 
+function greetHtml(){
+  const p=profiles().find(x=>x.id===PID);
+  return p?'<p style="margin:0 0 4px;font-weight:700;font-size:1.15rem;color:var(--color-heading)">Hey '+esc(p.name)+'!</p>':'';
+}
+function renderProfiles(){
+  statusbar.innerHTML='<span class="muted">Ein Code, ein Gerät – mehrere Kinder: Jedes Profil hat seinen eigenen Lernstand.</span>';
+  const ps=profiles();
+  const legacy=!ps.length&&localStorage.getItem(STORE_BASE);
+  main.innerHTML='<div class="card"><strong style="font-size:1.2rem">Wer lernt?</strong>'+
+    (legacy?'<div class="info" style="margin-top:10px">Schön, dass du wieder da bist! Gib deinen Vornamen ein – dein bisheriger Fortschritt wird automatisch übernommen.</div>':'')+
+    '<div style="margin-top:12px">'+(ps.map(p=>'<div class="row" style="margin-bottom:6px"><button class="btn block" data-id="'+p.id+'" style="flex:1">'+esc(p.name)+'</button><button class="btn ghost small" data-del="'+p.id+'" title="Profil löschen">🗑</button></div>').join("")||(legacy?'':'<p class="muted">Noch kein Profil.</p>'))+'</div>'+
+    '<label class="fld" for="pname">Neues Profil</label>'+
+    '<div class="row"><input type="text" id="pname" placeholder="Vorname" style="flex:1"><button class="btn" id="padd">Anlegen</button></div>'+
+    (PID&&PROF_VIEW?'<div style="margin-top:14px"><button class="btn ghost small" id="pcancel">Zurück ohne Wechsel</button></div>':'')+
+  '</div>';
+  $("padd").addEventListener("click",()=>{
+    const n=$("pname").value.trim(); if(!n) return $("pname").focus();
+    const id="p"+Date.now(); const a=profiles(); a.push({id,name:n}); setProfiles(a);
+    if(legacy){ // bisherigen (profillosen) Beta-Fortschritt dem ersten Profil zuordnen
+      try{ localStorage.setItem(STORE_BASE+"_"+id, localStorage.getItem(STORE_BASE)); localStorage.removeItem(STORE_BASE); }catch(e){}
+    }
+    selectProfile(id);
+  });
+  $("pname").addEventListener("keydown",e=>{ if(e.key==="Enter") $("padd").click(); });
+  document.querySelectorAll("[data-id]").forEach(b=>b.addEventListener("click",()=>selectProfile(b.dataset.id)));
+  document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.dataset.del; const p=profiles().find(x=>x.id===id); if(!p) return;
+    if(!confirm('Profil „'+p.name+'“ wirklich löschen?\n\nDer gesamte Lernfortschritt dieses Profils wird endgültig gelöscht.')) return;
+    if(!confirm('Ganz sicher? Das kann nicht rückgängig gemacht werden.')) return;
+    setProfiles(profiles().filter(x=>x.id!==id));
+    try{ localStorage.removeItem(STORE_BASE+"_"+id); }catch(e){}
+    if(PID===id){ PID=null; localStorage.removeItem("mathebooster_active"); S=null; }
+    render();
+  }));
+  if(PID&&PROF_VIEW) $("pcancel").addEventListener("click",()=>{ PROF_VIEW=false; render(); });
+}
 function renderStart(){
   const started=answered()>0&&!S.done;
   main.innerHTML=
-  '<div class="card">'+
+  '<div class="card">'+greetHtml()+
     '<span class="pill">Dein Mathe-Check</span>'+
     '<p style="margin-top:14px">'+esc(TXT.begruessung1)+'</p>'+
     '<p>'+esc(TXT.begruessung2)+'</p>'+
-    '<p>'+esc(TXT.begruessung3)+'</p>'+
+    '<p>Wenn ihr ein Thema in der Schule noch nicht hattet, tippe einfach auf<br><span style="white-space:nowrap">„Hatten wir noch nicht“</span> – das ist völlig okay!</p>'+
     '<p><strong>Los geht’s!</strong></p>'+
   '</div>'+
   '<div class="card">'+
@@ -485,7 +557,7 @@ function renderTask(){
   function goNext(){
     if(t.nr===18){ S.pausedAfterTeil1=false; return show("teil1ende"); }
     if(S.idx+1>=TASKS.length){ S.done=true; save(); return show("ende"); }
-    S.idx++; save(); render(); window.scrollTo(0,0);
+    S.idx++; save(); render(); window.scrollTo(0,0); pushHist();
   }
   if(t.type==="MC"){
     document.querySelectorAll("#opts .opt").forEach(b=>b.addEventListener("click",()=>{
@@ -516,7 +588,7 @@ function renderTask(){
     if($("wBtn")) $("wBtn").addEventListener("click",goNext);
     window.scrollTo(0,0);
   });
-  $("backBtn").addEventListener("click",()=>{ if(S.idx>0){S.idx--; save(); render();} });
+  $("backBtn").addEventListener("click",()=>{ if(S.idx>0){S.idx--; save(); render(); pushHist();} });
   $("skipBtn").addEventListener("click",goNext);
 }
 
@@ -558,7 +630,7 @@ function renderAnpassen(){
     '<label class="fld">Wie lange?</label>'+opts("wochen",[2,3],c.wochen,v=>v+" Wochen")+
     '<label class="fld">Wie viele Tage pro Woche?</label>'+opts("tage",[5,6,7],c.tage,v=>v+" Tage")+
     '<label class="fld">Wie viele Minuten pro Tag?</label>'+opts("minuten",[15,20,30,45],c.minuten,v=>v+" Min.")+
-    '<p class="muted" style="font-size:.85rem;margin-top:var(--space-3)">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 20 Min. mit Wiederholmix, ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Mehr Themen bekommst du über mehr Wochen oder Tage.</p>'+
+    '<p class="muted" style="font-size:.85rem;margin-top:var(--space-3)">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Wiederholt wird an jedem Lerntag, bei 15 Minuten kompakt. Mehr Themen bekommst du über mehr Wochen oder Tage.</p>'+
     '<button class="btn block" id="mkBtn">Lernplan erstellen</button>'+
   '</div>';
   document.querySelectorAll(".cfgrow .opt").forEach(b=>b.addEventListener("click",()=>{ S.config[b.dataset.n]=+b.dataset.v; save(); renderAnpassen(); }));
@@ -715,6 +787,7 @@ function unitSteps(skill, abMittel, minuten, blockIdx){
   const steps=[{typ:"verstehen",kern},{typ:"fallen",kern}];
   kernTasks.forEach(u=>steps.push({typ:"aufgabe",u}));
   if(minuten>=20) steps.push({typ:"mix"});
+  else steps.push({typ:"mix", limit:2}); // Mini-Mix bei 15 Min. (Entscheidung Annette 09.08.2026): täglich wiederholen gilt in JEDER Konstellation
   if(minuten>=30){
     const extra = c.uplus.length ? c.uplus.slice(0,4) : (abMittel?mittel.slice(5,8):mittel.slice(3,6));
     extra.forEach(u=>steps.push({typ:"aufgabe",u,extra:true}));
@@ -786,7 +859,7 @@ function renderDay(){
       st.kern.fallen.map(f=>'<div class="warn" style="margin-top:12px"><strong>'+esc(f.falle)+'</strong><br>✗ '+esc(f.falsch)+'<br>✓ '+esc(f.richtig)+'<br><span class="muted">'+esc(f.warum)+'</span></div>').join("")+
       '<button class="btn block" id="nx">Weiter zum Üben</button></div>';
   } else if(st.typ==="mix"){
-    return renderMixBlock(kopf, day);
+    return renderMixBlock(kopf, day, st.limit);
   } else {
     const u=st.u;
     const isMC = Array.isArray(u.mc);
@@ -798,7 +871,8 @@ function renderDay(){
         '<div class="prompt">'+esc(u.aufgabe)+'</div>'+
         '<div id="scratchhost"></div>'+
         '<div class="row" style="margin-top:16px"><button class="btn" id="skShow">'+label+'</button>'+
-        '<button class="btn ghost small" id="uskip">Überspringen</button></div>'+
+        '<button class="btn ghost small" id="uskip">Überspringen</button>'+
+        (S.unit.step>0?'<button class="btn ghost small" id="uback">‹ Zurück</button>':'')+'</div>'+
         '<div id="feedback"></div></div>';
       mountScratch($("scratchhost"), "u"+day.tag+"_"+S.unit.step);
       $("skShow").addEventListener("click",()=>{
@@ -807,11 +881,12 @@ function renderDay(){
           '<div class="row"><button class="btn" id="skJa">Hatte ich richtig</button>'+
           '<button class="btn ghost" id="skNein">Noch nicht ganz</button></div>';
         $("skShow").disabled=true;
-        const done=(ok)=>{ S.unit.gesamt++; if(ok)S.unit.richtig++; save(); S.unit.step++; save(); renderDay(); window.scrollTo(0,0); };
+        const done=(ok)=>{ S.unit.gesamt++; if(ok)S.unit.richtig++; save(); S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); };
         $("skJa").addEventListener("click",()=>done(true));
         $("skNein").addEventListener("click",()=>done(false));
       });
-      $("uskip").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
+      $("uskip").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
+      if($("uback")) $("uback").addEventListener("click",()=>{ S.unit.step--; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
       return;
     }
     main.innerHTML='<div class="card">'+kopf+
@@ -822,7 +897,8 @@ function renderDay(){
         : '<label class="fld" for="uans">Ergebnis</label><input type="text" id="uans" autocomplete="off">'+
           '<div id="scratchhost"></div>'+
           '<div class="row" style="margin-top:16px"><button class="btn" id="uok">Ergebnis übernehmen</button>'+
-          '<button class="btn ghost small" id="uskip">Überspringen</button></div>'+
+          '<button class="btn ghost small" id="uskip">Überspringen</button>'+
+        (S.unit.step>0?'<button class="btn ghost small" id="uback">‹ Zurück</button>':'')+'</div>'+
           '<div id="feedback"></div></div>');
     if(isMC){
       document.querySelectorAll("#mcopts .opt").forEach(btn=>btn.addEventListener("click",()=>{
@@ -834,7 +910,7 @@ function renderDay(){
         save();
         $("feedback").innerHTML=fb+'<button class="btn block" id="nx2">Weiter</button>';
         document.querySelectorAll("#mcopts .opt").forEach(o=>o.disabled=true);
-        $("nx2").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
+        $("nx2").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
       }));
       return;
     }
@@ -850,21 +926,22 @@ function renderDay(){
       save();
       $("feedback").innerHTML=fb+'<button class="btn block" id="nx2">Weiter</button>';
       $("uok").disabled=true;
-      $("nx2").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
+      $("nx2").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
     });
-    $("uskip").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
+    $("uskip").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
+    if($("uback")) $("uback").addEventListener("click",()=>{ S.unit.step--; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
     return;
   }
-  $("nx").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); });
+  $("nx").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
 }
-function renderMixBlock(kopf, day){
-  if(!S.unit.mixItems){ S.unit.mixItems=mixPool(day.id); save(); } // Auswahl pro Tag festhalten
+function renderMixBlock(kopf, day, limit){
+  if(!S.unit.mixItems){ S.unit.mixItems=mixPool(day.id).slice(0, limit||4); save(); } // Auswahl pro Tag festhalten
   const items=S.unit.mixItems;
   if(!items.length){ S.unit.step++; save(); return renderDay(); }
   const i=S.unit.mixIdx||0;
   if(i>=items.length){ S.unit.step++; S.unit.mixIdx=0; save(); return renderDay(); }
   const it=items[i];
-  const weiter=()=>{ S.unit.mixIdx=(S.unit.mixIdx||0)+1; save(); renderDay(); window.scrollTo(0,0); };
+  const weiter=()=>{ S.unit.mixIdx=(S.unit.mixIdx||0)+1; save(); renderDay(); window.scrollTo(0,0); pushHist(); };
   const merkRichtig=()=>{ S.mixDone[mixKey(it)]=true; };
   const merkFalsch=(fbAdd)=>{
     S.netz[it.skill]=(S.netz[it.skill]||0)+1;
@@ -877,7 +954,8 @@ function renderMixBlock(kopf, day){
     '<div class="prompt"'+(anw?' style="margin-top:4px"':'')+'>'+esc(it.aufgabe)+'</div>'+
     '<label class="fld" for="uans">Ergebnis</label><input type="text" id="uans" autocomplete="off">'+
     '<div class="row" style="margin-top:16px"><button class="btn" id="uok">Ergebnis übernehmen</button>'+
-    '<button class="btn ghost small" id="uskip">Überspringen</button></div><div id="feedback"></div></div>';
+    '<button class="btn ghost small" id="uskip">Überspringen</button>'+
+    ((S.unit.mixIdx||0)>0||S.unit.step>0?'<button class="btn ghost small" id="uback">‹ Zurück</button>':'')+'</div><div id="feedback"></div></div>';
   $("uok").addEventListener("click",()=>{
     const val=$("uans").value.trim(); if(val==="") return $("uans").focus();
     const res=solMatches(it.loesung,val);
@@ -900,6 +978,10 @@ function renderMixBlock(kopf, day){
     }
   });
   $("uskip").addEventListener("click",weiter);
+  if($("uback")) $("uback").addEventListener("click",()=>{
+    if((S.unit.mixIdx||0)>0) S.unit.mixIdx--; else S.unit.step--;
+    save(); renderDay(); window.scrollTo(0,0); pushHist();
+  });
 }
 function renderMixDay(day){
   if(!S.unit||S.unit.tag!==day.tag){ S.unit={tag:day.tag, skill:"MIX", step:0, mixIdx:0}; save(); }
@@ -959,22 +1041,71 @@ function renderFortschritt(){
     '<div class="bar koralle"><div style="width:'+Math.round(100*n/TASKS.length)+'%"></div></div>'+
     '<p>'+(S.done?'Mathe-Check geschafft – '+sitzt+' von '+SKILLS.length+' Themen sitzen schon. '+(S.planCreated?'Dein Plan steht.':'Als Nächstes: Lernplan erstellen.'):'Mathe-Check: '+n+' von '+TASKS.length+' Aufgaben notiert.')+'</p>'+
     '<button class="btn block" id="goBtn">'+(S.done?(S.planCreated?'Zum Lernplan':'Lernplan erstellen'):'Weitermachen')+'</button>'+
+  '</div>'+
+  '<div class="card">'+
+    '<strong>Sicherung</strong>'+
+    '<p class="muted" style="font-size:.9rem;margin-top:8px">💾 <strong>Wozu Sicherung?</strong> Dein Lernstand ist nur auf diesem Gerät gespeichert. „Sicherung exportieren“ legt davon eine kleine Datei an – sinnvoll z. B. vor einem Handy-Wechsel oder bevor jemand den Browser „aufräumt“. Mit „Sicherung laden“ holst du deinen Stand aus dieser Datei zurück.</p>'+
+    '<div class="row" style="margin-top:12px"><button class="btn ghost" id="expBtn">Sicherung exportieren</button>'+
+    '<button class="btn ghost" id="impBtn">Sicherung laden</button></div>'+
+    '<input type="file" id="impFile" accept="application/json,.json" style="display:none">'+
   '</div>';
   $("goBtn").addEventListener("click",()=>{ if(!S.done){ show("start"); } else show(S.planCreated?"plan":"anpassen"); });
+  $("expBtn").addEventListener("click",exportBackup);
+  $("impBtn").addEventListener("click",()=>$("impFile").click());
+  $("impFile").addEventListener("change",importBackup);
+}
+function exportBackup(){
+  const nm=(profiles().find(p=>p.id===PID)||{}).name||"profil";
+  const d=new Date().toISOString().slice(0,10);
+  const blob=new Blob([JSON.stringify({app:"mathe-booster",pid:PID,name:nm,date:d,version:APP_VERSION,state:S})],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="mathe-booster-sicherung-"+nm.toLowerCase().replace(/[^a-z0-9äöüß]+/gi,"-")+"-"+d+".json"; a.click();
+  setTimeout(()=>alert("Deine Sicherung wurde als Datei\n„"+a.download+"“\nin deinen Downloads gespeichert. Bewahre sie gut auf – mit „Sicherung laden“ kannst du deinen Lernstand jederzeit wiederherstellen."),150);
+}
+function importBackup(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+    const o=JSON.parse(r.result);
+    if(!o||typeof o!=="object"||o.app!=="mathe-booster"||!o.state) throw 0;
+    const cur=(profiles().find(p=>p.id===PID)||{}).name||"dieses Profil";
+    const when=o.date?(" vom "+new Date(o.date).toLocaleDateString("de-DE")):"";
+    let msg="⚠️ Achtung: Damit wird der komplette aktuelle Lernstand von „"+cur+"“ ersetzt – durch die Sicherung"+(o.name?(" von „"+o.name+"“"):"")+when+".\n\nAlles, was du seit dieser Sicherung gelernt hast, geht verloren.\n\nSicherung wirklich laden?";
+    if(o.name&&o.name!==cur) msg="Diese Sicherung stammt von einem anderen Profil („"+o.name+"“). Du bist gerade als „"+cur+"“ angemeldet.\n\n"+msg;
+    e.target.value="";
+    if(!confirm(msg)) return;
+    S=o.state; save(); initS(); // initS lädt aus dem Speicher nach und ergänzt fehlende Felder
+    alert("Sicherung geladen – dein Lernstand ist wiederhergestellt.");
+    render();
+  }catch(err){ e.target.value=""; alert("Das ist leider keine gültige Sicherungs-Datei des Mathe-Boosters."); } };
+  r.readAsText(f);
 }
 
 function renderInfo(){
-  main.innerHTML='<div class="card">'+
-    '<strong>Über den Booster</strong>'+
-    '<p>Der Mathe-Booster frischt genau die Mathe-Grundlagen auf, die du im neuen Schuljahr brauchst. Am Anfang steht dein Mathe-Check, er findet heraus, was du dir sparen kannst, ohne Bewertung. Daraus entsteht dein persönlicher Lernplan mit kurzen Einheiten wahlweise von 15 bis 45 Minuten.</p>'+
-    '<strong>So funktioniert dein Lernplan</strong>'+
-    '<p><strong>Wochen und Tage bestimmen, wie viele Themen in deinen Plan passen.</strong> Jeder Lerntag hat genau ein Thema; der letzte Tag jeder Woche ist ein Mix-Tag zum Wiederholen. Passt nicht alles hinein, rücken die restlichen Themen automatisch nach, sobald Platz ist.</p>'+
-    '<p><strong>Die Minuten pro Tag bestimmen, wie gründlich du jedes Thema übst</strong> – nicht, wie viele Themen du bekommst: Bei 15 Minuten lernst du das neue Thema mit den wichtigsten Übungen. Ab 20 Minuten kommt der kleine Wiederholmix aus den Vortagen dazu – der hält alles frisch. Ab 30 Minuten gibt es Extra-Übungen und ab 45 Minuten zusätzlich Knobel- und Anwendungsaufgaben.</p>'+
-    '<p>Du kannst alles jederzeit unter <strong>„Anpassen“</strong> ändern – und wer an einem Tag Lust auf mehr hat, macht einfach mit dem nächsten Baustein weiter.</p>'+
-    '<strong>Immer die neueste Version</strong>'+
-    '<p>Dein Booster wird laufend verbessert – neue Versionen kommen automatisch, aber nur, wenn die App neu geöffnet wird. Lass sie deshalb nicht einfach tagelang offen liegen: <strong>Öffne sie vor jedem Üben neu über deinen Link oder dein Lesezeichen</strong> (oder lade die Seite einmal neu). Keine Sorge: Dein Fortschritt bleibt dabei immer erhalten – beim Neuöffnen geht nichts verloren.</p>'+
-    '<p>Nur eines bitte nicht: die Browserdaten löschen (Verlauf/Websitedaten) – dort ist dein Fortschritt gespeichert. Welche Version du gerade hast, siehst du unten an der Versionsnummer.</p>'+
-    '<p class="muted" style="font-size:.9rem">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
+  const li=t=>'<p style="margin:6px 0 0;padding-left:1.1em;text-indent:-1.1em">• '+t+'</p>';
+  main.innerHTML=
+  '<div class="card">'+
+    '<strong style="font-size:1.1rem">So funktioniert dein Booster</strong>'+
+    '<p style="margin-top:10px"><strong>1. Check:</strong> Zuerst kommt dein Mathe-Check – kein Test, keine Note. Er zeigt, was du schon kannst und wo du noch Übungsbedarf hast.</p>'+
+    '<p><strong>2. Plan:</strong> Was du kannst, überspringst du. Für den Rest bekommst du deinen eigenen Lernplan.</p>'+
+    '<p><strong>3. Üben:</strong> Jeder Lerntag hat ein Thema, das kurz erklärt wird, dann übst du. Am Ende eines Lerntags wiederholst du.</p>'+
+  '</div>'+
+  '<div class="card">'+
+    '<strong>Dein Plan, deine Regeln</strong>'+
+    '<p style="margin-top:10px"><strong>1.</strong> <strong>Wochen und Tage</strong> bestimmen, wie viele Themen du machst. Passen nicht alle Themen in deinen Lernplan? Kein Problem. Die übrigen Themen kommen automatisch später dran, sobald wieder Platz ist.</p>'+
+    '<p><strong>2.</strong> <strong>Du entscheidest, wie lange du übst:</strong> Die von dir gewählte Zeit pro Tag bestimmt, wie ausführlich du ein Thema übst. Sie bestimmt nicht, wie viele Themen du bekommst.</p>'+
+    '<p><strong>3.</strong> Ändern kannst du alles jederzeit unter <strong>„Anpassen“</strong> – dein Fortschritt bleibt.</p>'+
+    '<p><strong>4.</strong> Lust auf mehr? Einfach mit dem nächsten Baustein im Lernplan weitermachen. Pause gemacht? Kein Problem – du machst genau da weiter, wo du aufgehört hast.</p>'+
+  '</div>'+
+  '<div class="card">'+
+    '<strong>Damit nichts verloren geht</strong>'+
+    '<p style="margin-top:10px"><strong>Wichtig: Immer die neueste Version nutzen.</strong> Öffne die App dafür immer neu über deinen Link oder dein Lesezeichen. Dein Fortschritt bleibt dabei erhalten.</p>'+
+    '<p><strong>Wichtig ist nur:</strong> Lösche nicht die Browserdaten bzw. die Websitedaten. Dort wird dein Fortschritt gespeichert. Ansonsten musst du von vorne beginnen.</p>'+
+    '<p><strong>Übt ihr auf mehreren Geräten?</strong><br>Dein Lernstand liegt nur auf dem Gerät, auf dem du gerade übst – er wandert nicht automatisch mit.</p>'+
+    '<p>Dann gilt eine einfache Regel: immer auf dem zuletzt genutzten Gerät unter <strong>„Fortschritt“</strong> eine Sicherung exportieren und sie auf dem nächsten Gerät wieder laden.</p>'+
+    '<p>So machst du genau dort weiter, wo du aufgehört hast.</p>'+
+    '<p><strong>Und bitte denk daran:</strong><br>Wenn jemand die Browserdaten löscht, ist der Lernstand weg – leg dir deshalb ab und zu eine Sicherung an.</p>'+
+    '<p class="muted" style="font-size:.9rem;margin-top:12px">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
     '<p class="muted" style="font-size:.85rem">Version: '+esc(APP_VERSION)+'</p>'+
     '<button class="btn block" id="homeBtn">Zur Startseite</button>'+
   '</div>';
@@ -995,9 +1126,10 @@ $("navInfo").addEventListener("click",()=>show("info"));
 $("brand").addEventListener("click",()=>show("info"));
 $("navProgress").addEventListener("click",()=>show("fortschritt"));
 $("navAdjust").addEventListener("click",()=>{ if(S.done) show("anpassen"); else notiert("Erst dein Mathe-Check – dann dein Plan!"); });
-$("navProfile").addEventListener("click",()=>{ notiert("Kommt bald!"); });
+$("navProfile").addEventListener("click",()=>{ PROF_VIEW=true; render(); window.scrollTo(0,0); });
 
 render();
+try{ history.replaceState({mb:S?histSnap():null},""); }catch(e){}
 </script>
 </body>
 </html>
