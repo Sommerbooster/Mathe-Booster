@@ -122,7 +122,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "Beta 1.9 · 09.08.2026";
+const APP_VERSION = "Beta 1.10 · 09.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
@@ -545,7 +545,7 @@ function renderTask(){
   }
   inner+='<div id="scratchhost"></div>';
   inner+='<div class="row" style="margin-top:20px">'+
-    (t.type!=="MC"?'<button class="btn" id="okBtn">Ergebnis übernehmen</button>':"")+
+    '<button class="btn" id="okBtn">Ergebnis übernehmen</button>'+
     (t.hwnn?'<button class="btn ghost" id="hwnnBtn">Hatten wir noch nicht</button>':"")+
     '</div>'+
     '<div class="row" style="margin-top:14px;justify-content:space-between">'+
@@ -560,13 +560,16 @@ function renderTask(){
     S.idx++; save(); render(); window.scrollTo(0,0); pushHist();
   }
   if(t.type==="MC"){
+    // Antippen wählt nur aus – weiter geht es erst mit „Ergebnis übernehmen" (Rückmeldung Beta 09.08.)
     document.querySelectorAll("#opts .opt").forEach(b=>b.addEventListener("click",()=>{
-      S.answers[t.nr]=+b.dataset.k; delete S.hwnn[t.nr]; save(); notiert(); setTimeout(goNext,450);
+      S.answers[t.nr]=+b.dataset.k; delete S.hwnn[t.nr]; save();
+      document.querySelectorAll("#opts .opt").forEach(o=>o.classList.toggle("active",o===b));
     }));
   }
   if($("okBtn")) $("okBtn").addEventListener("click",()=>{
     if(t.type==="E"){ const v=$("ans").value.trim(); if(v==="")return $("ans").focus(); S.answers[t.nr]=v; }
-    else { S.answers[t.nr]=[$("g1").value.trim(),$("g2").value.trim()]; }
+    else if(t.type==="GAP2"){ S.answers[t.nr]=[$("g1").value.trim(),$("g2").value.trim()]; }
+    else if(t.type==="MC"){ if(S.answers[t.nr]===undefined) return notiert("Tippe erst eine Antwort an!"); }
     delete S.hwnn[t.nr]; save(); notiert(); setTimeout(goNext,450);
   });
   if($("hwnnBtn")) $("hwnnBtn").addEventListener("click",()=>{
@@ -893,7 +896,9 @@ function renderDay(){
       (st.extra?'<span class="pill">Extra</span>':"")+
       '<div class="prompt">'+esc(u.aufgabe)+'</div>'+
       (isMC
-        ? '<div id="mcopts">'+u.mc.map((o,k)=>'<button class="opt" data-k="'+k+'">'+esc(o)+'</button>').join("")+'</div><div id="feedback"></div></div>'
+        ? '<div id="mcopts">'+u.mc.map((o,k)=>'<button class="opt" data-k="'+k+'">'+esc(o)+'</button>').join("")+'</div>'+
+          '<div class="row" style="margin-top:16px"><button class="btn" id="mcok">Ergebnis übernehmen</button>'+
+          (S.unit.step>0?'<button class="btn ghost small" id="uback">‹ Zurück</button>':'')+'</div><div id="feedback"></div></div>'
         : '<label class="fld" for="uans">Ergebnis</label><input type="text" id="uans" autocomplete="off">'+
           '<div id="scratchhost"></div>'+
           '<div class="row" style="margin-top:16px"><button class="btn" id="uok">Ergebnis übernehmen</button>'+
@@ -901,17 +906,25 @@ function renderDay(){
         (S.unit.step>0?'<button class="btn ghost small" id="uback">‹ Zurück</button>':'')+'</div>'+
           '<div id="feedback"></div></div>');
     if(isMC){
+      let sel=null; // Antippen wählt nur aus – gewertet wird erst mit „Ergebnis übernehmen"
       document.querySelectorAll("#mcopts .opt").forEach(btn=>btn.addEventListener("click",()=>{
-        const k=+btn.dataset.k; S.unit.gesamt++;
+        sel=+btn.dataset.k;
+        document.querySelectorAll("#mcopts .opt").forEach(o=>o.classList.toggle("active",o===btn));
+      }));
+      $("mcok").addEventListener("click",()=>{
+        if(sel===null) return notiert("Tippe erst eine Antwort an!");
+        S.unit.gesamt++;
         let fb;
-        if(k===u.mcCorrect){ S.unit.richtig++; btn.classList.add("active");
+        if(sel===u.mcCorrect){ S.unit.richtig++;
           fb='<div class="banner"><strong>Stark!</strong>'+(u.hinweis?' '+esc(u.hinweis):'')+'</div>'; }
         else { fb='<div class="warn"><strong>Noch nicht ganz – richtig ist: '+esc(u.mc[u.mcCorrect])+'</strong>'+(u.hinweis?'<br>So geht’s <span class="pf">→</span> '+esc(u.hinweis):'')+'</div>'; }
         save();
         $("feedback").innerHTML=fb+'<button class="btn block" id="nx2">Weiter</button>';
         document.querySelectorAll("#mcopts .opt").forEach(o=>o.disabled=true);
+        $("mcok").disabled=true;
         $("nx2").addEventListener("click",()=>{ S.unit.step++; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
-      }));
+      });
+      if($("uback")) $("uback").addEventListener("click",()=>{ S.unit.step--; save(); renderDay(); window.scrollTo(0,0); pushHist(); });
       return;
     }
     mountScratch($("scratchhost"), "u"+day.tag+"_"+S.unit.step);
