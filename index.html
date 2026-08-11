@@ -123,7 +123,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.18 · 11.08.2026";
+const APP_VERSION = "1.19 · 11.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
@@ -556,7 +556,12 @@ function renderTextT(t){
   h=h.replace(/FRAC49/g,'<span class="frac"><span class="num">4</span><span class="den">9</span></span>');
   return h;
 }
-function notiert(msg){ const n=$("notiert"); n.textContent=msg||"Danke, notiert!"; n.classList.add("show"); setTimeout(()=>n.classList.remove("show"),1300); }
+let notiertTimer=null;
+function notiert(msg,ms){ // ms: Anzeigedauer; Standard kurz, für erklärende Bestätigungen 10 s (Anweisung Annette 11.08.2026)
+  const n=$("notiert"); n.textContent=msg||"Danke, notiert!"; n.classList.add("show");
+  if(notiertTimer) clearTimeout(notiertTimer);
+  notiertTimer=setTimeout(()=>n.classList.remove("show"),ms||1300);
+}
 function answered(){ return TASKS.filter(t=>S.answers[t.nr]!==undefined||S.hwnn[t.nr]).length; }
 function setStatus(){
   if(S.screen==="day"){ statusbar.innerHTML='<div style="text-align:center"><button class="btn ghost small" id="statusBackPlan">Zurück zum Plan</button></div>';
@@ -841,11 +846,11 @@ function renderAnpassen(){
     /* Sofort-Rueckmeldung (Rueckmeldung Annette 11.08.2026): Bei Minuten aendert sich die
        Themenliste bewusst NICHT (nur die Uebungstiefe) - das sagen wir jetzt direkt dazu. */
     if(b.dataset.n==="minuten"){
-      notiert("Übernommen: "+b.dataset.v+" Minuten pro Tag. Das ändert die Übungstiefe – deine Themenliste bleibt gleich.");
+      notiert("Übernommen: "+b.dataset.v+" Minuten pro Tag. Das ändert die Übungstiefe – deine Themenliste bleibt gleich.",10000);
     } else {
       const p=buildPlan(effectiveDiag(),S.config);
       const imPlan=p.days.filter(d=>d.id!=="CHECK"&&d.id!=="MIX").length;
-      notiert(p.rest.length?("Übernommen! "+imPlan+" Themen-Bausteine im Plan, "+p.rest.length+" warten in deinem Bonus."):"Übernommen! Alle deine Themen-Bausteine haben Platz im Plan.");
+      notiert(p.rest.length?("Übernommen! "+imPlan+" Themen-Bausteine im Plan, "+p.rest.length+" warten in deinem Bonus."):"Übernommen! Alle deine Themen-Bausteine haben Platz im Plan.",10000);
     }
     renderAnpassen();
   }));
@@ -1312,7 +1317,7 @@ function renderPlanDone(){
       if(S.config.wochen<3) S.config.wochen++;
       else if(S.config.tage<7) S.config.tage++;
     });
-    notiert("Dein Plan ist gewachsen!"); show("plan");
+    notiert("Dein Plan ist gewachsen – die nächsten Themen sind jetzt drin!",10000); show("plan");
   });
   $("mixBtn").addEventListener("click",()=>{ S.curDay="extramix"; S.unit=null; show("day"); });
   $("planBtn2").addEventListener("click",()=>show("plan"));
