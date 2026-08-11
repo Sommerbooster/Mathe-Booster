@@ -123,7 +123,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.17 · 11.08.2026";
+const APP_VERSION = "1.18 · 11.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
@@ -833,10 +833,22 @@ function renderAnpassen(){
     '<label class="fld">Wie lange?</label>'+opts("wochen",[2,3],c.wochen,v=>v+" Wochen")+
     '<label class="fld">Wie viele Tage pro Woche?</label>'+opts("tage",[5,6,7],c.tage,v=>v+" Tage")+
     '<label class="fld">Wie viele Minuten pro Tag?</label>'+opts("minuten",[15,20,30,45],c.minuten,v=>v+" Min.")+
-    '<p class="muted" style="font-size:.85rem;margin-top:var(--space-3)">Mehr Minuten heißt: jedes Thema gründlicher üben (ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben) – nicht mehr Themen. Wiederholt wird an jedem Lerntag, bei 15 Minuten kompakt. Mehr Themen bekommst du über mehr Wochen oder Tage. Und falls nicht alle Themen in deinen Zeitraum passen: Die übrigen findest du unten im Lernplan in deinem Bonus – dort zuerst empfohlen.</p>'+
+    '<p class="muted" style="font-size:.85rem;margin-top:var(--space-3)"><strong>Gut zu wissen:</strong> Wochen und Tage bestimmen, wie viele Themen in deinen Plan passen. Die Minuten bestimmen, wie gründlich jedes Thema geübt wird (ab 30 Min. mit Extra-Übungen, ab 45 Min. mit Knobelaufgaben; wiederholt wird an jedem Lerntag, bei 15 Minuten kompakt). Wenn du nur die Minuten änderst, bleibt deine Themenliste deshalb genau gleich – das ist richtig so. Und falls nicht alle Themen in deinen Zeitraum passen: Die Grundlagen-Themen kommen zuerst in den Plan, denn auf ihnen baut alles auf – die übrigen findest du unten im Lernplan in deinem Bonus, dort zuerst empfohlen.</p>'+
     '<button class="btn block" id="mkBtn">Lernplan erstellen</button>'+
   '</div>';
-  document.querySelectorAll(".cfgrow .opt").forEach(b=>b.addEventListener("click",()=>{ withPlanRemap(()=>{ S.config[b.dataset.n]=+b.dataset.v; }); renderAnpassen(); }));
+  document.querySelectorAll(".cfgrow .opt").forEach(b=>b.addEventListener("click",()=>{
+    withPlanRemap(()=>{ S.config[b.dataset.n]=+b.dataset.v; });
+    /* Sofort-Rueckmeldung (Rueckmeldung Annette 11.08.2026): Bei Minuten aendert sich die
+       Themenliste bewusst NICHT (nur die Uebungstiefe) - das sagen wir jetzt direkt dazu. */
+    if(b.dataset.n==="minuten"){
+      notiert("Übernommen: "+b.dataset.v+" Minuten pro Tag. Das ändert die Übungstiefe – deine Themenliste bleibt gleich.");
+    } else {
+      const p=buildPlan(effectiveDiag(),S.config);
+      const imPlan=p.days.filter(d=>d.id!=="CHECK"&&d.id!=="MIX").length;
+      notiert(p.rest.length?("Übernommen! "+imPlan+" Themen-Bausteine im Plan, "+p.rest.length+" warten in deinem Bonus."):"Übernommen! Alle deine Themen-Bausteine haben Platz im Plan.");
+    }
+    renderAnpassen();
+  }));
   $("mkBtn").addEventListener("click",()=>{ S.planCreated=true; save(); show("plan"); });
 }
 
@@ -1411,7 +1423,7 @@ function renderInfo(){
   '</div>'+
   '<div class="card">'+
     '<strong>Dein Plan, deine Regeln</strong>'+
-    '<p style="margin-top:10px"><strong>1.</strong> <strong>Wochen und Tage</strong> bestimmen, wie viele Themen du machst. Passen nicht alle Themen in deinen Lernplan? Kein Problem. Du findest sie unten im Lernplan in deinem <strong>Bonus</strong> und kannst sie dort zuerst bearbeiten – so verpasst du kein Thema. Und sobald in deinem Plan wieder Platz ist, rücken sie automatisch nach.</p>'+
+    '<p style="margin-top:10px"><strong>1.</strong> <strong>Wochen und Tage</strong> bestimmen, wie viele Themen du machst. Passen nicht alle Themen in deinen Lernplan? Kein Problem. Die Grundlagen-Themen kommen zuerst in den Plan, denn auf ihnen baut alles Weitere auf. Die übrigen findest du unten im Lernplan in deinem <strong>Bonus</strong> und kannst sie dort zuerst bearbeiten – so verpasst du kein Thema. Und sobald in deinem Plan wieder Platz ist, rücken sie automatisch nach.</p>'+
     '<p><strong>2.</strong> <strong>Du entscheidest, wie lange du übst:</strong> Die von dir gewählte Zeit pro Tag bestimmt, wie ausführlich du ein Thema übst. Sie bestimmt nicht, wie viele Themen du bekommst.</p>'+
     '<p><strong>3.</strong> Ändern kannst du alles jederzeit unter <strong>„Anpassen“</strong> – dein Fortschritt bleibt.</p>'+
     '<p><strong>4.</strong> Lust auf mehr? Einfach mit dem nächsten Baustein im Lernplan weitermachen. Pause gemacht? Kein Problem – du machst genau da weiter, wo du aufgehört hast.</p>'+
