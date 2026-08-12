@@ -123,15 +123,15 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.19 · 11.08.2026";
+const APP_VERSION = "1.20 · 11.08.2026";
 
 const TASKS = [
- {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:false},
- {nr:2, teil:1, text:"Rechne: FRAC23 + FRAC49 (gib das Ergebnis als Bruch an, z. B. 3/4)", type:"E", label:"Antwort", hwnn:false, frac:true},
- {nr:3, teil:1, text:"Rechne: 6,2 − 1,85", type:"E", label:"Antwort", hwnn:false},
- {nr:4, teil:1, text:"3,05 km = ____ m", type:"E", label:"Antwort", unit:"m", hwnn:false},
- {nr:5, teil:1, text:"Schreibe 3/5 in Prozent.", type:"E", label:"Antwort", unit:"%", hwnn:false},
- {nr:6, teil:1, text:"Ein Rechteck ist 7 cm lang und 4 cm breit. Berechne den Flächeninhalt.", type:"E", label:"Antwort", unit:"cm²", hwnn:false},
+ {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
+ {nr:2, teil:1, text:"Rechne: FRAC23 + FRAC49 (gib das Ergebnis als Bruch an, z. B. 3/4)", type:"E", label:"Antwort", hwnn:true, frac:true},
+ {nr:3, teil:1, text:"Rechne: 6,2 − 1,85", type:"E", label:"Antwort", hwnn:true},
+ {nr:4, teil:1, text:"3,05 km = ____ m", type:"E", label:"Antwort", unit:"m", hwnn:true},
+ {nr:5, teil:1, text:"Schreibe 3/5 in Prozent.", type:"E", label:"Antwort", unit:"%", hwnn:true},
+ {nr:6, teil:1, text:"Ein Rechteck ist 7 cm lang und 4 cm breit. Berechne den Flächeninhalt.", type:"E", label:"Antwort", unit:"cm²", hwnn:true},
  {nr:7, teil:1, text:"Rechne: −7 + 12", type:"E", label:"Antwort", hwnn:true},
  {nr:8, teil:1, text:"Rechne: 3 − (−4) · 2", type:"E", label:"Antwort", hwnn:true},
  {nr:9, teil:1, text:"Ein Stift kostet x Euro. Du kaufst 5 Stifte, dazu kommen 3 € Versand. Welcher Term passt?", type:"MC", opts:["5x + 3","5 + 3x","8x","5 · (x + 3)"], hwnn:true},
@@ -263,6 +263,10 @@ function diagnose(answers, hwnn){
   const out={};
   for(const sk of SKILLS){
     if(sk.rang==="F"){
+      /* Auch bei "h" (HWNN) -> "plan": Der Knopf ist seit 1.20 auf ALLEN Aufgaben verfuegbar
+         (Anweisung Annette 11.08.2026). Bei Grundwissen aus Kl. 5/6 heisst "Hatten wir noch
+         nicht" praktisch "weiss ich nicht mehr" - das Thema kommt als Auffrischung in den
+         Plan und wird NIE zum Vorsprung, weil alles Weitere darauf aufbaut. */
       out[sk.id] = taskResult(sk.tasks[0], answers, hwnn)==="r" ? "sitzt" : "plan";
     } else if(sk.rang==="A"){
       const l=taskResult(sk.leicht, answers, hwnn), m=taskResult(sk.mittel, answers, hwnn);
