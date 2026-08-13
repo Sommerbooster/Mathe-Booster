@@ -123,7 +123,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.24 · 13.08.2026";
+const APP_VERSION = "1.25 · 13.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -521,7 +521,7 @@ if(PID && !profiles().find(p=>p.id===PID)) PID=null;
 function storeKey(){ return STORE_BASE+"_"+PID; }
 let PROF_VIEW=false; // Profil-Screen über den Nav-Button geöffnet
 
-function defaultState(){ return {screen:"start", idx:0, motivation:null, answers:{}, hwnn:{}, probe:{}, strokes:{}, startedAt:null, teil2StartedAt:null, hwnnHintSeen:false, done:false, pausedAfterTeil1:false, config:{wochen:2,tage:5,minuten:20}, planCreated:false, daysDone:{}, netz:{}, netzPlan:[], curDay:null, unit:null, mixDone:{}}; }
+function defaultState(){ return {screen:"info", idx:0, motivation:null, answers:{}, hwnn:{}, probe:{}, strokes:{}, startedAt:null, teil2StartedAt:null, hwnnHintSeen:false, done:false, pausedAfterTeil1:false, config:{wochen:2,tage:5,minuten:20}, planCreated:false, daysDone:{}, netz:{}, netzPlan:[], curDay:null, unit:null, mixDone:{}}; }
 let S=null;
 function initS(){
   S = load() || defaultState();
