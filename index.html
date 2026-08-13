@@ -123,7 +123,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.25 · 13.08.2026";
+const APP_VERSION = "1.26 · 13.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -223,7 +223,7 @@ function parseNum(s){
 }
 function parseFracValue(s){
   if(typeof s!=="string") return NaN;
-  s=s.trim().replace(/−/g,"-");
+  s=s.trim().replace(/−/g,"-").replace(/\s*\/\s*/g,"/"); // Leerzeichen um den Bruchstrich sind ok (auch bei "1 1 / 9")
   let m=s.match(/^(-?\d+)\s+(\d+)\/(\d+)$/); // gemischte Zahl "1 1/9"
   if(m){ const g=+m[1], z=+m[2], n=+m[3]; if(!n) return NaN; return (g<0?-1:1)*(Math.abs(g)+z/n); }
   m=s.match(/^(-?\d+)\/(\d+)$/);
@@ -592,7 +592,7 @@ function confetti(){
 function mountScratch(container, nr){
   const wrap=document.createElement("div"); wrap.className="scratch";
   const head=document.createElement("div"); head.className="row"; head.style.justifyContent="space-between";
-  head.innerHTML='<span class="muted" style="font-size:.9rem">Rechenfläche – Stift, Finger oder Maus</span>';
+  head.innerHTML='<span class="muted" style="font-size:.9rem">Rechenfläche – Stift, Finger oder Maus. <em>Dein Schmierblatt: Schreib wie im Heft, Brüche gern übereinander – gewertet wird nur das Ergebnis, das du oben einträgst.</em></span>';
   const clear=document.createElement("button"); clear.className="btn ghost small"; clear.textContent="Leeren";
   head.appendChild(clear); wrap.appendChild(head);
   const cv=document.createElement("canvas"); wrap.appendChild(cv); container.appendChild(wrap);
