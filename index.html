@@ -123,7 +123,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.21 · 13.08.2026";
+const APP_VERSION = "1.24 · 13.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -497,7 +497,7 @@ function lizenzKasten(){
   return '<div class="card"><strong>Euer Zugang</strong>'+
     '<p class="muted" style="font-size:.9rem;margin-top:8px">'+zeilen.join(" ")+'</p>'+
     '<p class="muted" style="font-size:.9rem">Alle Lerndaten bleiben auf diesem Gerät. Zur Prüfung des Zugangs wird nur eine zufällige Gerätekennung übertragen – kein Name, keine E-Mail-Adresse.</p>'+
-    '<p style="font-size:.9rem"><a href="#" id="geraetAb">Dieses Gerät abmelden ▸</a></p>'+
+    '<p style="font-size:.9rem"><a href="#" id="geraetAb" style="color:var(--koralle)">Dieses Gerät abmelden ▸</a></p>'+
   '</div>';
 }
 function geraetAbmelden(){
@@ -1340,7 +1340,7 @@ function renderFortschritt(){
   '</div>'+
   '<div class="card">'+
     '<strong>Sicherung</strong>'+
-    '<p class="muted" style="font-size:.9rem;margin-top:8px">💾 <strong>Wozu Sicherung?</strong> Dein Lernstand ist nur auf diesem Gerät gespeichert. „Sicherung exportieren“ legt davon eine kleine Datei an – sinnvoll z. B. vor einem Handy-Wechsel oder bevor jemand den Browser „aufräumt“. Mit „Sicherung laden“ holst du deinen Stand aus dieser Datei zurück.</p>'+
+    '<p style="font-size:.9rem;margin-top:8px;color:var(--koralle)">💾 <strong>Wozu Sicherung?</strong> Dein Lernstand ist nur auf diesem Gerät gespeichert. „Sicherung exportieren“ legt davon eine kleine Datei an – sinnvoll z. B. vor einem Handy-Wechsel oder bevor jemand den Browser „aufräumt“. Mit „Sicherung laden“ holst du deinen Stand aus dieser Datei zurück.</p>'+
     '<div class="row" style="margin-top:12px"><button class="btn ghost" id="expBtn">Sicherung exportieren</button>'+
     '<button class="btn ghost" id="impBtn">Sicherung laden</button></div>'+
     '<input type="file" id="impFile" accept="application/json,.json" style="display:none">'+
@@ -1425,6 +1425,11 @@ function renderInfo(){
   const li=t=>'<p style="margin:6px 0 0;padding-left:1.1em;text-indent:-1.1em">• '+t+'</p>';
   main.innerHTML=
   '<div class="card">'+
+    '<strong style="font-size:1.1rem">Willkommen beim Mathe-Booster!</strong>'+
+    '<p style="margin-top:10px"><strong>Das Ziel:</strong> Du schließt in zwei bis drei Wochen deine Mathe-Lücken aus der 7. Klasse und/oder festigst die Grundlagen, auf denen die 8. Klasse aufbaut – mit deinem persönlichen Lernplan, in kleinen Portionen und ohne Druck.</p>'+
+    '<p>Du machst zuerst einen kurzen Mathe-Check – damit nur geübt wird, was noch nicht sitzt oder aufgefrischt werden sollte. Dahinter stecken 22 Themen mit über 440 Aufgaben, abgeglichen mit echten Klassenarbeiten der 7. Klasse.</p>'+
+  '</div>'+
+  '<div class="card">'+
     '<strong style="font-size:1.1rem">So funktioniert dein Booster</strong>'+
     '<p style="margin-top:10px"><strong>1. Check:</strong> Zuerst kommt dein Mathe-Check – kein Test, keine Note. Er zeigt, was du schon kannst und wo du noch Übungsbedarf hast.</p>'+
     '<p><strong>2. Plan:</strong> Was du kannst, überspringst du. Für den Rest bekommst du deinen eigenen Lernplan.</p>'+
@@ -1446,7 +1451,8 @@ function renderInfo(){
     '<p>Dann gilt eine einfache Regel: immer auf dem zuletzt genutzten Gerät unter <strong>„Fortschritt“</strong> eine Sicherung exportieren und sie auf dem nächsten Gerät wieder laden.</p>'+
     '<p>So machst du genau dort weiter, wo du aufgehört hast.</p>'+
     '<p><strong>Und bitte denk daran:</strong><br>Wenn jemand die Browserdaten löscht, ist der Lernstand weg – leg dir deshalb ab und zu eine Sicherung an.</p>'+
-    '<p class="muted" style="font-size:.9rem;margin-top:12px">Beta-Version für Testfamilien · Fehler gefunden oder etwas unklar? Sag uns einfach Bescheid – genau dafür ist die Testphase da.</p>'+
+    '<p style="margin-top:12px">Viel Freude beim Lernen wünscht dir<br><span style="color:var(--secondary);font-size:1.1rem">Annette C. Breuer</span></p>'+
+    '<p class="muted" style="font-size:.9rem">Fragen, Wünsche oder einen Fehler entdeckt? Schreib mir gern: <a href="mailto:annette.c.breuer@gmail.com" style="color:var(--secondary)">annette.c.breuer@gmail.com</a></p>'+
     '<p class="muted" style="font-size:.85rem">Version: '+esc(APP_VERSION)+'</p>'+
     '<button class="btn block" id="homeBtn">Zur Startseite</button>'+
   '</div>'+
