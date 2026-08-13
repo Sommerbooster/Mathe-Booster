@@ -124,14 +124,14 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.30 · 13.08.2026";
+const APP_VERSION = "1.32 · 13.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
  {nr:2, teil:1, text:"Rechne: FRAC23 + FRAC49 (gib das Ergebnis als Bruch an, z. B. 3/4)", type:"E", label:"Antwort", hwnn:true, frac:true},
  {nr:3, teil:1, text:"Rechne: 6,2 − 1,85", type:"E", label:"Antwort", hwnn:true},
  {nr:4, teil:1, text:"3,05 km = ____ m", type:"E", label:"Antwort", unit:"m", hwnn:true},
- {nr:5, teil:1, text:"Schreibe 3/5 in Prozent.", type:"E", label:"Antwort", unit:"%", hwnn:true},
+ {nr:5, teil:1, text:"Schreibe FRAC35 in Prozent.", type:"E", label:"Antwort", unit:"%", hwnn:true},
  {nr:6, teil:1, text:"Ein Rechteck ist 7 cm lang und 4 cm breit. Berechne den Flächeninhalt.", type:"E", label:"Antwort", unit:"cm²", hwnn:true},
  {nr:7, teil:1, text:"Rechne: −7 + 12", type:"E", label:"Antwort", hwnn:true},
  {nr:8, teil:1, text:"Rechne: 3 − (−4) · 2", type:"E", label:"Antwort", hwnn:true},
@@ -557,11 +557,18 @@ const main=$("main"), statusbar=$("statusbar");
 function escAttr(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 /* esc: zusaetzlich werden alle Pfeile optisch auf Zeichenmitte gehoben (Rueckmeldung Annette 13.08.2026) -
    gilt automatisch in der GESAMTEN App, weil jeder sichtbare Text durch esc laeuft. Fuer Attribute escAttr nutzen! */
-function esc(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/→/g,'<span class="pf">→</span>'); }
+function escBase(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/→/g,'<span class="pf">→</span>'); }
+// Brüche app-weit mit echtem Bruchstrich (gestapelt) statt Schrägstrich – Anweisung Annette 13.08.2026.
+// Nur echte Brüche: Zahl-oder-EINZELbuchstabe / Zahl-oder-EINZELbuchstabe mit Wortgrenzen –
+// „und/oder“, „Stufen-/Wechselwinkelsatz“, „AB/2“, URLs usw. bleiben unangetastet (kein Lookbehind: alte Safari-Versionen).
+function esc(t){ return escBase(t).replace(/(^|[^A-Za-z0-9\u00C0-\u024F])(\d+|[A-Za-z])\/(\d+|[A-Za-z])(?![A-Za-z0-9\u00C0-\u024F])/g,'$1<span class="frac"><span class="num">$2</span><span class="den">$3</span></span>'); }
 function renderTextT(t){
-  let h=esc(t);
+  // escBase statt esc: Im Check bleiben Tipp-Beispiele fürs TIPPEN („z. B. 3/4“) im Schrägstrich-Format –
+  // angezeigte Brüche stehen dort als FRAC-Platzhalter und werden hier gestapelt.
+  let h=escBase(t);
   h=h.replace(/FRAC23/g,'<span class="frac"><span class="num">2</span><span class="den">3</span></span>');
   h=h.replace(/FRAC49/g,'<span class="frac"><span class="num">4</span><span class="den">9</span></span>');
+  h=h.replace(/FRAC35/g,'<span class="frac"><span class="num">3</span><span class="den">5</span></span>');
   return h;
 }
 let notiertTimer=null;
@@ -1473,7 +1480,8 @@ function renderThemen(){
 }
 
 function renderFormeln(){
-  const R=(t,f,w)=>'<p style="margin:12px 0 0"><strong>'+esc(t)+'</strong>'+(f?'<br>'+esc(f):'')+(w?'<br><span class="muted">'+esc(w)+'</span>':'')+'</p>';
+  const fr=esc; // Brüche mit Bruchstrich macht esc() seit 1.32 app-weit
+  const R=(t,f,w)=>'<p style="margin:12px 0 0"><strong>'+esc(t)+'</strong>'+(f?'<br>'+fr(f):'')+(w?'<br><span class="muted">'+fr(w)+'</span>':'')+'</p>';
   const K=(titel,inhalt)=>'<div class="card"><strong style="font-size:1.05rem;color:var(--secondary)">'+esc(titel)+'</strong>'+inhalt+'</div>';
   main.innerHTML=
   '<div class="card">'+
