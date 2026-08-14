@@ -124,7 +124,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.33 · 14.08.2026";
+const APP_VERSION = "1.34 · 14.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -296,7 +296,7 @@ function buildPlan(diag, cfg){
       const st=diag[sk.id];
       if(st==="plan"||st==="plan_ab_mittel"){
         const n=sk.blocks||1;
-        for(let i=0;i<n;i++) queue.push({id:sk.id, abMittel:st==="plan_ab_mittel", block:i, titel:sk.titel+(n>1?" ("+(i+1)+"/"+n+")":"")});
+        for(let i=0;i<n;i++) queue.push({id:sk.id, abMittel:st==="plan_ab_mittel", block:i, titel:sk.titel+(n>1?" (Teil "+(i+1)+"/"+n+")":"")});
       } else if(st==="optional"||st==="optional_ab_mittel"){
         bonus.push({id:sk.id, abMittel:st==="optional_ab_mittel", titel:sk.titel});
       }
@@ -561,7 +561,10 @@ function escBase(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;")
 // Brüche app-weit mit echtem Bruchstrich (gestapelt) statt Schrägstrich – Anweisung Annette 13.08.2026.
 // Nur echte Brüche: Zahl-oder-EINZELbuchstabe / Zahl-oder-EINZELbuchstabe mit Wortgrenzen –
 // „und/oder“, „Stufen-/Wechselwinkelsatz“, „AB/2“, URLs usw. bleiben unangetastet (kein Lookbehind: alte Safari-Versionen).
-function esc(t){ return escBase(t).replace(/(^|[^A-Za-z0-9\u00C0-\u024F])(\d+|[A-Za-z])\/(\d+|[A-Za-z])(?![A-Za-z0-9\u00C0-\u024F])/g,'$1<span class="frac"><span class="num">$2</span><span class="den">$3</span></span>'); }
+function esc(t){ return escBase(t).replace(/(^|[^A-Za-z0-9\u00C0-\u024F])(\d+|[A-Za-z])\/(\d+|[A-Za-z])(?![A-Za-z0-9\u00C0-\u024F])/g,function(m,pre,z,n,off,str){
+  if(/Teil\s*$/.test(str.slice(Math.max(0,off-8),off+pre.length))) return m; // "(Teil 1/2)" im Lernplan ist ein Zähler, kein Bruch (Korrektur Annette 14.08.2026)
+  return pre+'<span class="frac"><span class="num">'+z+'</span><span class="den">'+n+'</span></span>';
+}); }
 function renderTextT(t){
   // escBase statt esc: Im Check bleiben Tipp-Beispiele fürs TIPPEN („z. B. 3/4“) im Schrägstrich-Format –
   // angezeigte Brüche stehen dort als FRAC-Platzhalter und werden hier gestapelt.
