@@ -124,7 +124,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.41 · 14.08.2026";
+const APP_VERSION = "1.42 · 15.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -1011,6 +1011,19 @@ function numericInput(t){ // Zahl/Bruch/gemischte Zahl + optional kurze Einheit
 function solMatches(sol, input){
   const s=String(sol).replace(/−/g,"-").trim();
   const inp=String(input).replace(/−/g,"-").trim();
+  if(s===inp||termNorm(s)===termNorm(inp)) return true; // Fix 1.42: exakt getippte Lösung zählt IMMER (auch Produkte wie (x + 5)(x − 5))
+  // Fix 1.42: Produkte mit vertauschten Faktoren zählen auch – "(x+2)*5" = "5(x + 2)"
+  const prodKey=t=>{ const n=termNorm(t);
+    const m=n.match(/^(\d+(?:,\d+)?)?((?:\([^()]+\))+)(\d+(?:,\d+)?)?$/);
+    if(!m||(m[1]&&m[3])) return null;
+    const coef=m[1]||m[3]||"";
+    const fac=m[2].match(/\([^()]+\)/g).map(f=>{
+      const parts=f.slice(1,-1).replace(/([+\-])/g,"\u00a7$1").split("\u00a7").filter(Boolean);
+      try{ return parts.map(monoKey).sort().join("+"); }catch(e){ return f; }
+    }).sort();
+    return coef+"|"+fac.join("|"); };
+  const pks=prodKey(s), pki=prodKey(inp);
+  if(pks&&pki&&pks===pki) return true;
   // 1) Name=Wert-Antworten (z. B. Winkel): reihenfolgeunabhängig, griechisch auch ausgeschrieben
   const ps=parsePairs(s), pi=parsePairs(inp);
   if(ps&&pi){
@@ -1038,7 +1051,9 @@ function solMatches(sol, input){
       add(s, true);
       for(const m of s.matchAll(/=\s*(-?[\d,\/]+)([a-zα-ω]?)/gi)){ if(!m[2]) add(m[1]); }
       if(cands.length) return cands.some(v=>isFinite(v)&&Math.abs(inFrac-v)<0.005);
-      if(isTermLike(s)) return false; // reine Zahl als Antwort auf einen Term ist falsch
+      if(isTermLike(s)){ // Fix 1.42: "11x" sah aus wie Zahl+Einheit und wurde falsch gewertet → als TERM vergleichen
+        const rT=termEq(s,inp); if(rT!==null) return rT;
+        return false; } // reine Zahl als Antwort auf einen Term bleibt falsch
     }
   }
   // 4) Terme: normalisieren (^ und Hochzahlen, Groß/klein, ·) und als Monom-Menge vergleichen
