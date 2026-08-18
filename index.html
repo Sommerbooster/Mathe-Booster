@@ -124,7 +124,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.52 · 17.08.2026";
+const APP_VERSION = "1.53 · 18.08.2026";
 
 const TASKS = [
  {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
@@ -971,6 +971,9 @@ function termNorm(t){
     .replace(/[·*]/g,"");
 }
 function isTermLike(t){
+  /* 1.53: "441 und 399" wurde als Term gelesen ("und" = drei Variablen u·n·d), die zweite Zahl fiel
+     dabei weg - dadurch galt "441 und 499" als richtig. Bindewoerter schliessen den Termweg aus. */
+  if(/(^|[^a-zäöüß])(und|oder|bzw|sowie|bis)([^a-zäöüß]|$)/i.test(String(t))) return false;
   const n=termNorm(t);
   return /^[+\-]?[0-9a-zα-ω^+\-]+$/.test(n) && /[a-zα-ω]/.test(n) && !/[a-zα-ω]{5,}/.test(n);
 }
@@ -992,8 +995,174 @@ function termEq(a,b){
   if(!pa||!pb) return null;
   return pa.length===pb.length && pa.every((x,i)=>x===pb[i]);
 }
+/* ---------------------------------------------------------------------------
+   1.53 – Termrechner (Entscheidung Annette 18.08.2026)
+   Befund davor: Wo die Mathematik IN der Klammer stand, verglich die Wertung nur den Rest.
+   "(x + 5)²" gegen "(x + 6)²" hiess "richtig", weil nach dem Streichen der Klammer beidesmal
+   nur "²" uebrig blieb. Betroffen waren 22 Aufgaben (Faktorisieren, binomische Formeln).
+   Neu: Loesung und Eingabe werden als Term GELESEN und an sieben festen Stuetzstellen
+   ausgerechnet. Gleiche Werte -> richtig. Ein abweichender Wert -> falsch.
+   Nicht lesbar -> Selbstabgleich wie bisher (lieber nachfragen als falsch urteilen).
+   --------------------------------------------------------------------------- */
+let FORM_HINWEIS="";                 // Zusatzhinweis fuer den Selbstabgleich (Formfrage)
+function formHinweis(){ return FORM_HINWEIS; }
+function exprParse(t){
+  let n=String(t).replace(/−/g,"-").trim();
+  n=n.replace(/^[a-zA-Zα-ω]\s*\(\s*[a-zA-Zα-ω]\s*\)\s*=\s*/,"");   // "f(x) = 0,4x" -> "0,4x"
+  if(/[=;]/.test(n)) return null;
+  /* 1.53: Malpunkt bleibt ein Rechenzeichen. termNorm loescht ihn (fuer "y·x²" richtig), aus
+     "4,2 · 10⁻⁴" wurde dadurch die Zahl "4,210^-4". Hier wird er zu "*" und bleibt erhalten. */
+  n=n.toLowerCase().replace(/\s+/g,"")
+     .replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g,m=>"^"+[...m].map(c=>c==="⁻"?"-":"⁰¹²³⁴⁵⁶⁷⁸⁹".indexOf(c)).join(""))
+     .replace(/[·×]/g,"*");
+  if(!n||!/^[0-9a-zα-ω,()+\-^\/*]+$/.test(n)) return null;
+  if(/[a-zα-ω]{3,}/.test(n)) return null;          // Woerter sind keine Terme ("Ja (Ssw)" ist kein Produkt j·a·s·s·w)
+  if(!/[0-9]/.test(n)&&!/[+\-^\/]/.test(n)) return null;   // ohne Zahl und ohne Rechenzeichen ist es Text
+  let i=0;
+  const ende=()=>i>=n.length;
+  function pExpr(){
+    let k=pTerm(); if(k===null) return null;
+    while(!ende()&&(n[i]==="+"||n[i]==="-")){ const op=n[i++]; const r=pTerm(); if(r===null) return null; k={op:op,l:k,r:r}; }
+    return k;
+  }
+  function pTerm(){
+    let k=pUnary(); if(k===null) return null;
+    for(;;){
+      if(ende()) break;
+      const c=n[i];
+      if(c==="/"){ i++; const r=pUnary(); if(r===null) return null; k={op:"/",l:k,r:r}; continue; }
+      if(c==="*"){ i++; const r=pUnary(); if(r===null) return null; k={op:"*",l:k,r:r}; continue; }
+      if(/[0-9a-zα-ω(]/.test(c)){ const r=pUnary(); if(r===null) return null; k={op:"*",l:k,r:r}; continue; }  // 5(x+2)
+      break;
+    }
+    return k;
+  }
+  function pUnary(){
+    if(!ende()&&n[i]==="-"){ i++; const r=pUnary(); return r===null?null:{op:"neg",l:r}; }
+    if(!ende()&&n[i]==="+"){ i++; return pUnary(); }
+    const b=pBase(); if(b===null) return null;
+    if(!ende()&&n[i]==="^"){ i++; const e=pUnary(); return e===null?null:{op:"^",l:b,r:e}; }
+    return b;
+  }
+  function pBase(){
+    if(ende()) return null;
+    if(n[i]==="("){ i++; const e=pExpr(); if(e===null||ende()||n[i]!==")") return null; i++; return e; }
+    const num=/^\d+(?:,\d+)?/.exec(n.slice(i));
+    if(num){ i+=num[0].length; return {op:"num",v:parseFloat(num[0].replace(",","."))}; }
+    if(/[a-zα-ω]/.test(n[i])) return {op:"var",v:n[i++]};
+    return null;
+  }
+  const ast=pExpr();
+  return (ast===null||!ende())?null:ast;
+}
+function exprEval(a,env){
+  switch(a.op){
+    case "num": return a.v;
+    case "var": return (a.v in env)?env[a.v]:NaN;
+    case "neg": return -exprEval(a.l,env);
+    case "+": return exprEval(a.l,env)+exprEval(a.r,env);
+    case "-": return exprEval(a.l,env)-exprEval(a.r,env);
+    case "*": return exprEval(a.l,env)*exprEval(a.r,env);
+    case "/": { const d=exprEval(a.r,env); return d===0?NaN:exprEval(a.l,env)/d; }
+    case "^": return Math.pow(exprEval(a.l,env),exprEval(a.r,env));
+  }
+  return NaN;
+}
+function exprVars(a,out){ out=out||[];
+  if(!a||typeof a!=="object") return out;
+  if(a.op==="var"){ if(out.indexOf(a.v)<0) out.push(a.v); return out; }
+  exprVars(a.l,out); exprVars(a.r,out); return out;
+}
+/* Faktorform = Klammer, die mit etwas multipliziert oder potenziert wird: 5(x+2), (a+b)(a-b), (x+3)^2 */
+function istFaktorform(t){
+  const n=termNorm(String(t).replace(/−/g,"-").replace(/^[a-zA-Zα-ω]\s*\(\s*[a-zA-Zα-ω]\s*\)\s*=\s*/,""));  // "f(x) = …" ist keine Klammerform
+  return /[0-9a-zα-ω)]\(/.test(n) || /\)\^/.test(n) || /\)[0-9a-zα-ω]/.test(n);
+}
+const STUETZ=[2,3,5,7,11,13,-2,-3,-5,4,6,9,1.5,2.5,0.5];
+function exprCmp(sol,inp){
+  const A=exprParse(sol), B=exprParse(inp);
+  if(!A||!B) return null;
+  const vs=exprVars(A).concat(exprVars(B)).filter((v,k,arr)=>arr.indexOf(v)===k).sort();
+  /* Ohne Variable nur rechnen, wenn wenigstens eine Seite ein Rechenzeichen traegt ("2¹⁰" gegen
+     "3¹⁰", "4,2 · 10⁻⁴", "1024"). Zwei blanke Zahlen bleiben dem Zahlweg mit seiner Toleranz. */
+  const rz=t=>/[\^*\/]|\d[+\-]/.test(String(t).replace(/\s+/g,"").replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]/g,"^"));
+  if(!vs.length && !rz(sol) && !rz(inp)) return null;
+  let gute=0;
+  for(let k=0;k<7;k++){
+    const env={}; vs.forEach((v,j)=>{ env[v]=STUETZ[(k*4+j*3+j*j)%STUETZ.length]; });
+    const a=exprEval(A,env), b=exprEval(B,env);
+    if(!isFinite(a)||!isFinite(b)) continue;
+    gute++;
+    if(Math.abs(a-b)>1e-9*Math.max(1,Math.abs(a),Math.abs(b))) return false;
+  }
+  if(gute<4) return null;                           // zu wenig belastbare Stuetzstellen
+  const fS=istFaktorform(sol), fI=istFaktorform(inp);
+  if(fS!==fI){                                      // Variante A (Entscheidung Annette): kein "richtig", sondern Selbstabgleich mit Hinweis
+    FORM_HINWEIS = fS
+      ? "Rechnerisch ist dein Term gleichwertig – er steht nur nicht in der Klammerform der Lösung. Wenn die Aufgabe das Ausklammern (Faktorisieren) verlangt, zählt nur die Klammerform."
+      : "Rechnerisch ist dein Term gleichwertig – er ist nur nicht ausmultipliziert. Wenn die Aufgabe das Ausmultiplizieren verlangt, zählt nur die ausmultiplizierte Form.";
+    return "form";
+  }
+  return true;
+}
+/* 1.53 – Zahlvergleich mit der Genauigkeit, die in der Loesung steht.
+   Vorher galt pauschal ±0,005: bei F3 (Runden!) zaehlte 14,386 auf die Loesung 14,385 als richtig,
+   ebenso 3/65 auf 3/64. Jetzt: Brueche exakt, Dezimalzahlen auf ihre eigene Stellenzahl. */
+/* Nur ECHTE Einheiten dürfen ein Urteil begründen: "3ab" sieht aus wie "3 ab", ist aber ein Term.
+   Deshalb entscheidet eine feste Liste und nicht die Form. */
+const EINHEITEN=["°","€","%","mm","cm","dm","m","km","mg","g","kg","t","ml","l","h","min","s","ha",
+                 "mm²","cm²","dm²","m²","km²","cm³","dm³","m³","°c"];
+function einheitVon(t){
+  const m=String(t).replace(/−/g,"-").trim().match(/^-?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?\s*(°|€|%|[a-zA-Zµ]{1,3}[²³]?)$/);
+  if(!m) return "";
+  const e=m[1].toLowerCase();
+  return EINHEITEN.indexOf(e)>=0?e:"";
+}
+function bruchTeile(t){
+  const m=String(t).replace(/−/g,"-").trim().match(/^(-?\d+)\s*\/\s*(\d+)\s*(?:°|€|%|[a-zA-Zµ]{1,3}[²³]?)?$/);
+  return m?[parseInt(m[1],10),parseInt(m[2],10)]:null;
+}
+function zahlWert(t){ return parseFracValue(String(t).replace(/−/g,"-").replace(/\s*(?:°|€|%|[a-zA-Zµ]{1,3}[²³]?)$/,"").replace(/\s/g,"")); }
+function zahlPasst(sT,iT){
+  const eS=einheitVon(sT), eI=einheitVon(iT);
+  if(eS&&eI&&eS!==eI) return false;                 // 12 cm ist nicht 12 m
+  const bS=bruchTeile(sT), bI=bruchTeile(iT);
+  if(bS&&bI) return bS[0]*bI[1]===bI[0]*bS[1];      // Brueche exakt vergleichen
+  const vS=zahlWert(sT), vI=zahlWert(iT);
+  if(!isFinite(vS)||!isFinite(vI)) return false;
+  const dez=t=>{ const m=String(t).match(/[.,](\d+)/); return m?m[1].length:0; };
+  const k=Math.max(dez(sT),dez(iT));
+  const tol=k>=3?Math.pow(10,-k)/2:0.005;
+  return Math.abs(vS-vI)<tol;
+}
+/* 1.53 – "9 cm und 12 cm", "441 und 399": Teil fuer Teil vergleichen statt als Term lesen. */
+function undTeile(t){
+  const s=String(t).replace(/−/g,"-");
+  if(s.indexOf(";")>=0) return null;
+  const p=s.split(/\s+und\s+/i).map(x=>x.trim()).filter(Boolean);
+  return p.length>=2?p:null;
+}
+function istZahlEinheit(t){ return /^-?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?\s*(?:°|€|%|[a-zA-Zµ]{1,3}[²³]?)?$/.test(String(t).replace(/−/g,"-").trim()); }
+/* 1.53 – Zahl mit ausgeschriebener Einheit ("6 Gläser", "50 Min.", "4 Pumpen", "7 °C").
+   Solche Loesungen fielen bisher durch jedes Raster und landeten im Selbstabgleich. */
+function zahlWort(t){
+  // Einheit = Wort, Grad, Prozent oder Euro – ausdruecklich KEINE Hochzahl ("2¹⁰" ist eine Potenz)
+  const m=String(t).replace(/−/g,"-").trim().match(/^(-?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)\s*([a-zA-ZäöüÄÖÜß°%€.\s]{0,14})$/);
+  if(!m) return null;
+  return {z:m[1].trim(), w:m[2].trim().toLowerCase().replace(/[.\s]+$/,"")};
+}
+/* 1.53 – Uhrzeiten ("21:35 Uhr") */
+function uhrzeit(t){ const m=String(t).trim().match(/^(\d{1,2}):(\d{2})(?:\s*uhr)?$/i); return m?(parseInt(m[1],10)*60+parseInt(m[2],10)):null; }
+/* 1.53 – Liste gleichartiger Zahlen ("35°, 70°, 75°", "25°, 25°, 130°"): als Menge vergleichen. */
+function zahlListe(t){
+  const s=String(t).replace(/−/g,"-");
+  const p=s.split(/;|,\s/).map(x=>x.trim()).filter(Boolean);
+  if(p.length<2||!p.every(istZahlEinheit)) return null;
+  return p;
+}
 function parsePairs(t){ // "β = 40°, α = 80°" / "Alpha=80°, Beta=40°" -> {β:40, α:80}
-  const parts=String(t).replace(/−/g,"-").split(/[;,]/).map(x=>x.trim()).filter(Boolean);
+  // 1.53: nur an ";" und ", " trennen – sonst zerriss das Komma in "α = 37,5°" die Zahl
+  const parts=String(t).replace(/−/g,"-").split(/;|,\s/).map(x=>x.trim()).filter(Boolean);
   if(!parts.length) return null;
   const out={};
   for(const p of parts){
@@ -1028,13 +1197,26 @@ function mcOrder(seed, n){
   return idx;
 }
 function solMatches(sol, input){
+  FORM_HINWEIS="";                                      // 1.53: Formhinweis gilt immer nur fuer die aktuelle Antwort
   const s=String(sol).replace(/−/g,"-").trim();
   const inp=String(input).replace(/−/g,"-").trim();
   if(s===inp||termNorm(s)===termNorm(inp)) return true; // Fix 1.42: exakt getippte Lösung zählt IMMER (auch Produkte wie (x + 5)(x − 5))
+  /* 1.53: nummerierte Lösungen ("3. (a + 7)(a − 7)" = binomische Formel Nr. 3 + Ergebnis):
+     Nummer und Term getrennt prüfen. Fehlt die Nummer, ist das kein Fehler, sondern Selbstabgleich. */
+  const nrS=s.match(/^(\d+)\.\s*(\S.*)$/);
+  if(nrS){
+    const nrI=inp.match(/^(\d+)\.\s*(\S.*)$/);
+    if(!nrI) return null;
+    if(nrS[1]!==nrI[1]) return false;
+    return solMatches(nrS[2], nrI[2]);
+  }
   // Fix 1.42: Produkte mit vertauschten Faktoren zählen auch – "(x+2)*5" = "5(x + 2)"
   const prodKey=t=>{ const n=termNorm(t);
     const m=n.match(/^(\d+(?:,\d+)?)?((?:\([^()]+\))+)(\d+(?:,\d+)?)?$/);
     if(!m||(m[1]&&m[3])) return null;
+    /* 1.53: Klammerinhalt muss ein Term sein. Sonst wurde "0,375 (= 3/8)" mit "0,375 (= 4/8)"
+       gleichgesetzt – monoKey ignorierte die Ziffern hinter "=" und lieferte beide Male denselben Schlüssel. */
+    if(m[2].match(/\([^()]+\)/g).some(f=>!/^\([0-9a-zα-ω,^+\-]+\)$/.test(f))) return null;
     const coef=m[1]||m[3]||"";
     const fac=m[2].match(/\([^()]+\)/g).map(f=>{
       const parts=f.slice(1,-1).replace(/([+\-])/g,"\u00a7$1").split("\u00a7").filter(Boolean);
@@ -1064,33 +1246,94 @@ function solMatches(sol, input){
     const ei=splitEnum(inp);
     if(ei) return es.length===ei.length&&es.every((x,i)=>x===ei[i]);
   }
+  /* 2b) 1.53 – "9 cm und 12 cm", "441 und 399", "0,75 und 3/8": Teil fuer Teil vergleichen.
+     Vorher las die Wertung solche Antworten als Term und ignorierte den zweiten Teil. */
+  const us=undTeile(s);
+  if(us && us.every(istZahlEinheit)){
+    const ui=undTeile(inp);
+    if(!ui || ui.length!==us.length || !ui.every(istZahlEinheit)) return null;
+    return us.every((p,k)=>zahlPasst(p,ui[k]));
+  }
+  /* 2c) 1.53 – Uhrzeit, Zahl mit ausgeschriebener Einheit, Zahlenliste, Zahlengleichung.
+     Alle vier landeten vorher pauschal im Selbstabgleich, obwohl sie eindeutig prüfbar sind. */
+  const termMitVariablen=(()=>{ const a=exprParse(s); return !!a && exprVars(a).length>0; })();
+  const tS=uhrzeit(s);
+  if(tS!==null){ const tI=uhrzeit(inp); if(tI!==null) return tS===tI; }
+  const lS=zahlListe(s);
+  if(lS && !undTeile(s)){
+    const lI=zahlListe(inp);
+    if(lI && lI.length===lS.length){
+      const rest=lI.slice();
+      return lS.every(p=>{ const k=rest.findIndex(q=>zahlPasst(p,q)); if(k<0) return false; rest.splice(k,1); return true; });
+    }
+    if(lI) return false;                              // Liste getippt, aber andere Anzahl
+  }
+  const wS=zahlWort(s);
+  if(wS && wS.w && !termMitVariablen && (wS.w.length>=3 || /[^a-zäöüß]/.test(wS.w))){
+    const wI=zahlWort(inp);
+    if(wI){
+      if(wI.w && wI.w!==wS.w) return false;           // "6 Tassen" ist nicht "6 Gläser"
+      return zahlPasst(wS.z, wI.z);
+    }
+  }
+  const gS=s.split("=");
+  if(gS.length===2 && istZahlEinheit(gS[0].trim()) && istZahlEinheit(gS[1].trim())){
+    const gI=inp.split("=");
+    if(gI.length===2 && istZahlEinheit(gI[0].trim()) && istZahlEinheit(gI[1].trim()))
+      return zahlPasst(gS[0].trim(),gI[0].trim()) && zahlPasst(gS[1].trim(),gI[1].trim());
+  }
+  /* 1.53: Ist die Lösung ein Term MIT Variablen (und nicht Zahl+Einheit), dann ist eine bloße Zahl
+     keine Antwort darauf. Vorher zählte "24" auf die Lösung "24 − x²" als richtig, weil die 24 am
+     Anfang der Lösung als Ergebnis-Kandidat gelesen wurde. */
+  const solIstTerm = !numericInput(s) && (()=>{ const a=exprParse(s);
+    return !!a && (exprVars(a).length>0 || /[\^*]|\d[+\-]\d/.test(termNorm(s))); })();  // auch "4,2 · 10⁻⁴" ist eine Rechnung, keine Zahl
   // 3) Zahlen/Brüche: Kandidaten aus der Lösung (Anfang + Werte nach "=", keine Potenz-Basen, keine Variablen-Koeffizienten)
-  if(numericInput(inp)){
+  if(numericInput(inp) && !solIstTerm){
     if(s.includes(";")) return null; // mehrteilige Lösung (z. B. "Median 4; Q1 = 3; …"): eine einzelne Zahl nie automatisch werten → Selbstabgleich (Fix 1.33)
     const inFrac=parseFracValue(inp.replace(/\s*(?:°|€|%|[a-zA-Z]{1,3}[²³]?)$/,""));
     if(isFinite(inFrac)){
-      const cands=[];
+      const eS=einheitVon(s), eI=einheitVon(inp);
+      if(eS&&eI&&eS!==eI) return false;      // 1.53: "12 m" auf die Lösung "12 cm" ist falsch, nicht richtig
+      const cands=[];                        // 1.53: Kandidaten als TEXT, damit die Stellenzahl erhalten bleibt
       const add=(t,lead)=>{ if(!t)return; t=t.trim();
         if(lead && /^-?\d+(?:,\d+)?[⁰¹²³⁴⁵⁶⁷⁸⁹^]/.test(t)) return; // "2⁵ = …": Basis ist kein Ergebnis
         const f=t.match(/^-?\d+\/\d+/); const n=t.match(/^-?\d+(?:,\d+)?/);
-        if(f&&!/^[a-zα-ω]/i.test(t.slice(f[0].length))){ const [x,y]=f[0].split("/").map(Number); if(y)cands.push(x/y); }
-        else if(n&&!/^[a-zα-ω]/i.test(t.slice(n[0].length))){ cands.push(parseFloat(n[0].replace(",","."))); } }; // "16x²…": Koeffizient ist kein Ergebnis
+        if(f&&!/^[a-zα-ω]/i.test(t.slice(f[0].length))){ cands.push(f[0]); }
+        else if(n&&!/^[a-zα-ω]/i.test(t.slice(n[0].length))){ cands.push(n[0]); } }; // "16x²…": Koeffizient ist kein Ergebnis
       add(s, true);
       for(const m of s.matchAll(/=\s*(-?[\d,\/]+)([a-zα-ω]?)/gi)){ if(!m[2]) add(m[1]); }
-      if(cands.length) return cands.some(v=>isFinite(v)&&Math.abs(inFrac-v)<0.005);
+      if(cands.length) return cands.some(c=>zahlPasst(c, inp));
       if(isTermLike(s)){ // Fix 1.42: "11x" sah aus wie Zahl+Einheit und wurde falsch gewertet → als TERM vergleichen
         const rT=termEq(s,inp); if(rT!==null) return rT;
         return false; } // reine Zahl als Antwort auf einen Term bleibt falsch
     }
   }
-  // 4) Terme: normalisieren (^ und Hochzahlen, Groß/klein, ·) und als Monom-Menge vergleichen
+  // 4) Terme: erst ausrechnen (1.53), sonst als Monom-Menge vergleichen
+  const ax=exprCmp(s,inp);
+  if(ax==="form") return null;               // gleichwertig, aber andere Form → Selbstabgleich mit Hinweis (Variante A)
+  if(ax!==null) return ax;
   if(isTermLike(s)&&isTermLike(inp)){
     const r=termEq(s,inp);
     if(r!==null) return r;
   }
+  /* 4b) 1.53 – "0,375 (= 3/8)", "102,4 mm (ca. 10 cm)": Steht vor der Klammer eine Zahl und tippt
+     das Kind ebenfalls Zahl + Klammer, dann entscheidet die Zahl. Vorher: Selbstabgleich. */
+  const kernS=s.replace(/\s*\([^)]*\)/g," ").trim(), kernI=inp.replace(/\s*\([^)]*\)/g," ").trim();
+  const klS=(s.match(/\(([^)]*)\)/)||[])[1], klI=(inp.match(/\(([^)]*)\)/)||[])[1];
+  if(kernS!==s && istZahlEinheit(kernS) && istZahlEinheit(kernI)){
+    if(zahlPasst(kernS,kernI)===false) return false;
+    // Zahl stimmt: nur loben, wenn das Kind den Klammerzusatz weggelassen oder richtig getippt hat
+    if(klI===undefined || normTxt(klI)===normTxt(klS||"")) return true;
+    return null;                                     // Klammerinhalt weicht ab -> Selbstabgleich
+  }
   // 5) Text: Klammerzusatz der Lösung ist optional; kurze Textantworten eindeutig werten
   const core=normTxt(s.replace(/\s*\([^)]*\)/g," "));
   const ni=normTxt(inp.replace(/\s*\([^)]*\)/g," "));
+  /* 1.53 (Befund 18.08.2026): Diese Regel darf nur greifen, wenn das, was AUSSERHALB der Klammer
+     steht, für sich eine Antwort ist. Bei "(x + 5)²" blieb sonst nur "²" übrig – und "(x + 6)²"
+     galt als richtig. Zugelassen: ein echtes Wort (≥ 3 Buchstaben) oder eine Ja/Nein-Antwort. */
+  const kernTraegt = /[a-zäöüα-ω]{3,}/.test(core) || /^(ja|nein)\b/.test(core);
+  if(kernTraegt){
   if(core&&(ni===core||ni===normTxt(s))) return true;
   // Fix 1.33 (Rückmeldung Annette – richtige Antworten wurden als falsch gewertet):
   // Artikel davor zählen ("der Median" = "Median"), ebenso die Antwort im ganzen Satz.
@@ -1121,6 +1364,7 @@ function solMatches(sol, input){
   if(c2&&c2.length>=3&&!/\b(nicht|kein|keine|keinen|keinem|keiner)\b/.test(satz)&&satz.includes(" "+c2+" ")) return true;
   if(c2&&!/\b(nicht|kein|keine|keinen|keinem|keiner)\b/.test(satz)&&satz.trim().split(" ").some(w=>fast(w))) return true;
   if(c2&&c2.split(" ").length<=2&&!/\d/.test(c2)&&/[a-zα-ωäöü]/.test(n2)&&n2.split(" ").length<=3) return false;
+  } // Ende Textweg (1.53)
   /* 1.52 (Entscheidung Annette 17.08.2026, Variante A): Verlangt die Aufgabe eine ZAHL als Antwort
      (reine Zahl, Zahl mit Einheit/Prozent/Grad, Bruch oder "x = Zahl") und die Eingabe enthält
      KEINE einzige Ziffer, dann ist die Antwort falsch – und nicht Anlass für einen Selbstabgleich.
@@ -1527,7 +1771,7 @@ function renderDay(){
       let fb;
       if(res===true){ S.unit.richtig++; fb='<div class="banner"><strong>Stark! Richtig: '+esc(u.loesung)+'</strong>'+(u.hinweis?'<br><span class="muted">So geht’s <span class="pf">→</span> '+esc(u.hinweis)+'</span>':'')+'</div>'+schrittBlock(u); }
       else if(res===false){ fb='<div class="warn"><strong>Noch nicht ganz – richtig ist: '+esc(u.loesung)+'</strong>'+(u.hinweis?'<br>So geht’s <span class="pf">→</span> '+esc(u.hinweis):'')+'</div>'+schrittBlock(u); }
-      else { fb='<div class="info"><strong>Lösung: '+esc(u.loesung)+'</strong>'+(u.hinweis?'<br><span class="muted">So geht’s <span class="pf">→</span> '+esc(u.hinweis)+'</span>':'')+'</div>'+schrittBlock(u); }
+      else { fb='<div class="info"><strong>Lösung: '+esc(u.loesung)+'</strong>'+(formHinweis()?'<br>'+esc(formHinweis()):'')+(u.hinweis?'<br><span class="muted">So geht’s <span class="pf">→</span> '+esc(u.hinweis)+'</span>':'')+'</div>'+schrittBlock(u); }
       save();
       $("feedback").innerHTML=fb+'<button class="btn block" id="nx2">Weiter</button>';
       bindWeg();
@@ -1590,7 +1834,7 @@ function renderMixBlock(kopf, day, limit){
       bindWeg();
       $("nx2").addEventListener("click",weiter);
     } else { // nicht automatisch prüfbar -> Selbstabgleich statt pauschalem "falsch"
-      $("feedback").innerHTML='<div class="info"><strong>Lösung: '+esc(it.loesung)+'</strong></div>'+schrittBlock(it)+
+      $("feedback").innerHTML='<div class="info"><strong>Lösung: '+esc(it.loesung)+'</strong>'+(formHinweis()?'<br>'+esc(formHinweis()):'')+'</div>'+schrittBlock(it)+
         '<p style="margin-top:10px"><strong>Hattest du es richtig?</strong></p>'+
         '<div class="row"><button class="btn" id="mxJa">Hatte ich richtig</button>'+
         '<button class="btn ghost" id="mxNein">Noch nicht ganz</button></div><div id="fb2"></div>';
