@@ -124,37 +124,52 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.53 · 18.08.2026";
+const APP_VERSION = "1.54 · 18.08.2026";
 
 const TASKS = [
- {nr:1, teil:1, text:"Rechne: 36 − 4 · (2 + 5)", type:"E", label:"Antwort", hwnn:true},
- {nr:2, teil:1, text:"Rechne: FRAC23 + FRAC49 (gib das Ergebnis als Bruch an, z. B. 3/4)", type:"E", label:"Antwort", hwnn:true, frac:true},
- {nr:3, teil:1, text:"Rechne: 6,2 − 1,85", type:"E", label:"Antwort", hwnn:true},
- {nr:4, teil:1, text:"3,05 km = ____ m", type:"E", label:"Antwort", unit:"m", hwnn:true},
- {nr:5, teil:1, text:"Schreibe FRAC35 in Prozent.", type:"E", label:"Antwort", unit:"%", hwnn:true},
- {nr:6, teil:1, text:"Ein Rechteck ist 7 cm lang und 4 cm breit. Berechne den Flächeninhalt.", type:"E", label:"Antwort", unit:"cm²", hwnn:true},
- {nr:7, teil:1, text:"Rechne: −7 + 12", type:"E", label:"Antwort", hwnn:true},
- {nr:8, teil:1, text:"Rechne: 3 − (−4) · 2", type:"E", label:"Antwort", hwnn:true},
- {nr:9, teil:1, text:"Ein Stift kostet x Euro. Du kaufst 5 Stifte, dazu kommen 3 € Versand. Welcher Term passt?", type:"MC", opts:["5x + 3","5 + 3x","8x","5 · (x + 3)"], hwnn:true},
- {nr:10, teil:1, text:"Setze x = −3 in den Term −5 · (x + 4) − 3 ein.", type:"E", label:"Ergebnis", hwnn:true},
- {nr:11, teil:1, text:"Vereinfache: 7x + 3 − 2x + 5", type:"MC", opts:["5x + 8","13x","9x + 8","5x − 2"], hwnn:true},
- {nr:12, teil:1, text:"Multipliziere aus: −2 · (3x − 5)", type:"E", label:"Ergebnis", term:true, hwnn:true},
- {nr:13, teil:1, text:"Löse die Gleichung: 4x − 7 = 13", type:"E", label:"x =", hwnn:true},
- {nr:14, teil:1, text:"Löse die Gleichung: 3x − 4 = −3x + 8", type:"E", label:"x =", hwnn:true},
- {nr:15, teil:1, text:"Berechne: 15 % von 345 €", type:"E", label:"Antwort", unit:"€", hwnn:true},
- {nr:16, teil:1, text:"Eine Waschmaschine kostet in einer Rabattaktion bei 20 % Ermäßigung noch 560 €. Was kostete sie vorher?", type:"E", label:"Antwort", unit:"€", hwnn:true},
- {nr:17, teil:1, text:"3 kg Äpfel kosten 5,40 €. Was kosten 5 kg?", type:"E", label:"Antwort", unit:"€", hwnn:true},
- {nr:18, teil:1, text:"6 Bauarbeiter brauchen für eine Mauer 10 Tage. Wie lange brauchen 4 Bauarbeiter?", type:"E", label:"Antwort", unit:"Tage", hwnn:true},
- {nr:19, teil:2, text:"Multipliziere aus: (x + 3)²", type:"E", label:"Ergebnis", term:true, hwnn:true},
- {nr:20, teil:2, text:"2³ · 2⁴ = 2^▢", type:"E", label:"2 hoch", hwnn:true},
- {nr:21, teil:2, text:"Zwei Geraden schneiden sich. Der eine Winkel ist viermal so groß wie sein Nebenwinkel α. Wie groß ist α?", type:"E", label:"α =", unit:"°", hwnn:true},
- {nr:22, teil:2, text:"Bestimme den Median: 12, 3, 15, 8, 7", type:"E", label:"Antwort", hwnn:true},
- {nr:23, teil:2, text:"500 € liegen ein halbes Jahr zu 4 % Jahreszins an. Wie viel Zinsen gibt es?", type:"E", label:"Antwort", unit:"€", hwnn:true},
- {nr:24, teil:2, text:"Von einem Dreieck kennst du zwei Seiten und den Winkel dazwischen. Lässt es sich eindeutig zeichnen?", type:"MC", opts:["Ja, immer","Nein","Nur wenn es rechtwinklig ist"], hwnn:true},
- {nr:25, teil:2, text:"Alle Punkte, die von A und B gleich weit entfernt sind, liegen auf …", type:"MC", opts:["der Mittelsenkrechten von AB","der Strecke AB","einem Kreis um A","der Winkelhalbierenden"], hwnn:true},
- {nr:26, teil:2, text:"C liegt auf einem Halbkreis über der Strecke AB (AB ist der Durchmesser). Welcher Winkel des Dreiecks ABC ist ein rechter?", type:"MC", opts:["der bei C","der bei A","der bei B","keiner"], hwnn:true},
- {nr:27, teil:2, text:"Welches Produkt ergibt x² − 9?", type:"MC", opts:["(x + 3)(x − 3)","(x − 3)²","(x + 3)²","x(x − 9)"], hwnn:true},
- {nr:28, teil:2, text:"Welche Termart hat 3 · (x + 2)?", type:"MC", opts:["Produkt","Summe","Differenz","Quotient"], hwnn:true},
+ /* 1.54 (Anweisung Annette 18.08.2026): JEDE Check-Aufgabe hat einen Buch-Anker und liegt NIE
+    unter der Buch-Untergrenze. Reihenfolge der Nummern bleibt erhalten (alte Lernstaende bleiben
+    lesbar), 29-38 sind neu. Teil 1 = F + A, Teil 2 = B, Teil 3 = C. */
+ {nr:1, teil:1, text:"Berechne: (0,2 − 0,3) · (FRAC53 − FRAC74)", type:"E", label:"Antwort", hwnn:true, frac:true, quelle:"Buch 5.1, Aufg. 1d · Lösung S. 174 ✓"},
+ {nr:2, teil:1, text:"Berechne: FRAC23 von FRAC34 (gib das Ergebnis als Bruch an, z. B. 3/4)", type:"E", label:"Antwort", hwnn:true, frac:true, quelle:"Test Kap. 1, Aufg. 2c · Lösung S. 148 ✓"},
+ {nr:3, teil:1, text:"Berechne: 0,6149 : 1,3", type:"E", label:"Antwort", hwnn:true, quelle:"Test Kap. 1, Aufg. 6d · Lösung S. 149 ✓"},
+ {nr:4, teil:1, text:"3,05 km = ____ m", type:"E", label:"Antwort", unit:"m", hwnn:true, quelle:"Klassenarbeit (Größen); Notation Grundwissen-Band S. 149"},
+ {nr:5, teil:1, text:"130 m von 6500 m sind wie viel Prozent?", type:"E", label:"Antwort", unit:"%", hwnn:true, quelle:"Test Kap. 2, Aufg. 1c · Lösung S. 155 ✓"},
+ {nr:6, teil:1, text:"Ein Rechteck ist 7 cm lang und 4 cm breit. Berechne den Flächeninhalt.", type:"E", label:"Antwort", unit:"cm²", hwnn:true, quelle:"Klassenarbeit; Formel Grundwissen-Band S. 149"},
+ {nr:7, teil:1, text:"Berechne: −0,3 + FRAC35 − 0,1", type:"E", label:"Antwort", hwnn:true, quelle:"Buch 5.1, Aufg. 1c · Lösung S. 174 ✓"},
+ {nr:8, teil:1, text:"Setze x = −3 in den Term 4x − 2 ein.", type:"E", label:"Ergebnis", hwnn:true, quelle:"Test Kap. 5, Aufg. 1b · Lösung S. 185 ✓"},
+ {nr:9, teil:1, text:"Ein Stift kostet x Euro. Du kaufst 5 Stifte, dazu kommen 3 € Versand. Welcher Term passt?", type:"MC", opts:["5x + 3","5 + 3x","8x","5 · (x + 3)"], hwnn:true, quelle:"Buch 5.5 (Terme aufstellen), Einstieg"},
+ {nr:10, teil:1, text:"Setze x = −3 in den Term −5 · (x + 4) − 3 ein.", type:"E", label:"Ergebnis", hwnn:true, quelle:"Test Kap. 5, Aufg. 1d · Lösung S. 185 ✓"},
+ {nr:11, teil:1, text:"Löse die Klammer auf: −3 · (x − 8)", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Buch 5.3, Aufg. 15b · Lösung S. 177 ✓"},
+ {nr:12, teil:1, text:"Löse die Klammern auf und fasse zusammen: 5 · (2x + 3y) − 2 · (x − 4y)", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Buch 5.3, Aufg. 15g · Lösung S. 177 ✓"},
+ {nr:13, teil:1, text:"Löse die Gleichung: 6x − 8 = 4", type:"E", label:"x =", hwnn:true, quelle:"Buch 5.4, Aufg. 19b · Lösung S. 178 ✓"},
+ {nr:14, teil:1, text:"Löse die Gleichung: 2 · (2x + 2) = 3 · (−3x − 3)", type:"E", label:"x =", hwnn:true, quelle:"Test Kap. 5, Aufg. 2b · Lösung S. 185 ✓"},
+ {nr:15, teil:1, text:"Berechne: 15 % von 345 €", type:"E", label:"Antwort", unit:"€", hwnn:true, quelle:"Test Kap. 2, Aufg. 1a · Lösung S. 155 ✓"},
+ {nr:16, teil:1, text:"Eine Waschmaschine kostet in einer Rabattaktion bei 20 % Ermäßigung noch 560 €. Was kostete sie vorher?", type:"E", label:"Antwort", unit:"€", hwnn:true, quelle:"Test Kap. 2, Aufg. 2c · Lösung S. 155 ✓"},
+ {nr:17, teil:1, text:"Ein Auto verbraucht 9,5 l auf 100 km, der Tank fasst 66,5 l. Wie viel Liter sind nach 250 km noch im Tank?", type:"E", label:"Antwort", unit:"l", hwnn:true, quelle:"Test Kap. 4, Aufg. 5a"},
+ {nr:18, teil:1, text:"Dasselbe Auto: Wie weit kommt es mit einer vollen Tankfüllung höchstens?", type:"E", label:"Antwort", unit:"km", hwnn:true, quelle:"Test Kap. 4, Aufg. 5b"},
+
+ {nr:19, teil:2, text:"Multipliziere aus: (x + 3)²", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Klassenarbeit (1. binomische Formel); Grundwissen-Band S. 147"},
+ {nr:29, teil:2, text:"Multipliziere aus: (4x − y)²", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Klassenarbeit 2. Test 11/2019 (2. binomische Formel)"},
+ {nr:20, teil:2, text:"2³ · 2⁴ = 2^▢", type:"E", label:"2 hoch", hwnn:true, quelle:"Klassenarbeit (Potenzgesetze); Grundwissen-Band"},
+ {nr:30, teil:2, text:"Schreibe als Bruch: 2⁻³", type:"E", label:"Antwort", hwnn:true, frac:true, quelle:"Klassenarbeit; Grundwissen-Band (negative Hochzahl)"},
+ {nr:21, teil:2, text:"Zwei Geraden schneiden sich. Der eine Winkel ist viermal so groß wie sein Nebenwinkel α. Wie groß ist α?", type:"E", label:"α =", unit:"°", hwnn:true, quelle:"Test Kap. 6, Aufg. 1b · Lösung S. 198 ✓"},
+ {nr:31, teil:2, text:"In einem Dreieck ist α = 54°, außerdem sind β und γ gleich groß. Wie groß ist β?", type:"E", label:"β =", unit:"°", hwnn:true, quelle:"Test Kap. 6, Aufg. 2b · Lösung S. 198 ✓"},
+ {nr:22, teil:2, text:"Bestimme den Median: 12, 3, 15, 8, 7", type:"E", label:"Antwort", hwnn:true, quelle:"Buch 3.9 (Daten darstellen und beurteilen)"},
+ {nr:32, teil:2, text:"Bestimme die Spannweite derselben Daten: 12, 3, 15, 8, 7", type:"E", label:"Antwort", hwnn:true, quelle:"Buch 3.9 (Daten darstellen und beurteilen)"},
+ {nr:23, teil:2, text:"500 € liegen ein halbes Jahr zu 4 % Jahreszins an. Wie viel Zinsen gibt es?", type:"E", label:"Antwort", unit:"€", hwnn:true, quelle:"Buch 2.7 (Zinsrechnung, Grundaufgaben)"},
+ {nr:33, teil:2, text:"Katharina legt 600 € zwei Jahre lang zu 2 % Zinsen pro Jahr an. Wie viel Zinsen bekommt sie in den zwei Jahren zusammen?", type:"E", label:"Antwort", unit:"€", hwnn:true, quelle:"Test Kap. 2, Aufg. 5 · Lösung S. 155 ✓"},
+
+ {nr:24, teil:3, text:"Von einem Dreieck kennst du zwei Seiten und den Winkel dazwischen. Lässt es sich eindeutig zeichnen?", type:"MC", opts:["Ja, immer","Nein","Nur wenn es rechtwinklig ist"], hwnn:true, quelle:"Test Kap. 7, Aufg. 2 (Kongruenzsätze)"},
+ {nr:34, teil:3, text:"Lässt sich ein Dreieck mit a = 4 cm, β = 95° und γ = 90° konstruieren? Antworte mit „geht“ oder „geht nicht“.", type:"E", label:"Antwort", hwnn:true, quelle:"Test Kap. 7, Aufg. 2c · Lösung S. 205 ✓"},
+ {nr:25, teil:3, text:"Alle Punkte, die von A und B gleich weit entfernt sind, liegen auf …", type:"MC", opts:["der Mittelsenkrechten von AB","der Strecke AB","einem Kreis um A","der Winkelhalbierenden"], hwnn:true, quelle:"Buch 6.6 (Mittelsenkrechte)"},
+ {nr:35, teil:3, text:"Und alle Punkte, die von beiden Schenkeln eines Winkels gleich weit entfernt sind, liegen auf …", type:"E", label:"Antwort", hwnn:true, quelle:"Buch 6.7 (Winkelhalbierende)"},
+ {nr:26, teil:3, text:"C liegt auf einem Halbkreis über der Strecke AB (AB ist der Durchmesser). Welcher Winkel des Dreiecks ABC ist ein rechter?", type:"MC", opts:["der bei C","der bei A","der bei B","keiner"], hwnn:true, quelle:"Buch 6.9 (Satz des Thales)"},
+ {nr:36, teil:3, text:"In einem rechtwinkligen Dreieck misst ein weiterer Winkel 60°. Wie groß ist der dritte Winkel?", type:"E", label:"Antwort", unit:"°", hwnn:true, quelle:"Buch 6.9, Aufg. 41★ b"},
+ {nr:27, teil:3, text:"Welches Produkt ergibt x² − 9?", type:"MC", opts:["(x + 3)(x − 3)","(x − 3)²","(x + 3)²","x(x − 9)"], hwnn:true, quelle:"Buch 5.3 + Grundwissen-Band S. 147"},
+ {nr:37, teil:3, text:"Klammere so weit wie möglich aus: 6a + 3b − 9c", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Buch 5.3, Aufg. 16f · Lösung S. 177 ✓"},
+ {nr:28, teil:3, text:"Fasse zusammen: 2x − x + y + y − 2z + 5z", type:"MC", opts:["x + 2y + 3z","x + 2y + 7z","3x + 2y + 3z","x + y + 3z"], hwnn:true, quelle:"Buch 5.2, Aufg. 7c · Lösung S. 175 ✓"},
+ {nr:38, teil:3, text:"Fasse zu einem einzigen Bruch zusammen: FRACx2 + FRACy3 + FRACz6", type:"E", label:"Ergebnis", term:true, hwnn:true, quelle:"Buch 5.2, Aufg. 8e · Lösung S. 175 ✓"},
 ];
 
 const TXT = {
@@ -164,8 +179,10 @@ const TXT = {
  nachHwnn:"Alles klar! Das Thema kommt als Bonus in deinen Plan – du kannst also später entscheiden, ob du dir das noch anschaust. So ist es kein Muss, sondern dein Vorsprung fürs neue Schuljahr, wenn du Lust dazu hast.",
  hwnnHinweis:"Übrigens: „Hatten wir noch nicht“ heißt manchmal auch „hatten wir, aber vergessen“ – gerade nach den Ferien ganz normal. Die meisten Themen hier kommen in allen Bundesländern dran, nur wenige wirklich später. Wenn du unsicher bist: Probier die Aufgabe einfach – schiefgehen kann nichts.",
  miniProbe:"Magst du’s kurz probieren? Wenn nicht, auch okay.",
- teil1Ende:"Stark – Teil 1 ist geschafft! Teil 2 ist kürzer. Machst du direkt weiter oder morgen? Beides ist völlig okay.",
+ teil1Ende:"Stark – Teil 1 ist geschafft! Es fehlen noch zwei kürzere Teile. Machst du direkt weiter oder morgen? Beides ist völlig okay.",
+ teil2Ende:"Super – Teil 2 ist durch! Der letzte Teil ist der kürzeste. Direkt weiter oder morgen? Du entscheidest.",
  teil2Intro:"Auch hier gilt: Thema unbekannt? Tippe einfach auf „Hatten wir noch nicht“ – raten musst du nie.",
+ teil3Intro:"Letzter Teil – hier geht es um Figuren, Konstruktionen und Terme. Auch hier: „Hatten wir noch nicht“ ist völlig okay.",
  konsistenz:"Kleiner Tipp: Diese Aufgabe gehört zum selben Thema wie Aufgabe 19. Wenn ihr das noch nicht hattet, ist „Hatten wir noch nicht“ auch hier völlig okay.",
  abschluss:"Geschafft! Danke dir – du hast gerade dabei geholfen, deinen Sommer-Plan zu bauen. Es gibt kein Bestehen und kein Durchfallen: Alles, was du konntest, sparst du dir. Den Rest packen wir gemeinsam an.",
  abschlussViel:"Und falls sich das gerade nach vielen offenen Aufgaben angefühlt hat: perfekt. Jetzt weiß dein Booster ganz genau, wo er dir helfen kann – Schritt für Schritt, in kleinen Portionen. Genau dafür ist er da.",
@@ -178,12 +195,15 @@ const TXT = {
 /*ENGINE-START*/
 /* ---------- Lösungen (QS-geprüft, Auswertungsbogen Pilottest-Leitfaden Abschn. 3) ---------- */
 const KEY = {
- 1:{t:"num",v:8}, 2:{t:"frac",v:[10,9]}, 3:{t:"num",v:4.35}, 4:{t:"num",v:3050}, 5:{t:"num",v:60},
- 6:{t:"num",v:28}, 7:{t:"num",v:5}, 8:{t:"num",v:11}, 9:{t:"mc",v:0}, 10:{t:"num",v:-8},
- 11:{t:"mc",v:0}, 12:{t:"term",v:"−6x + 10",legacy:[-6,10]}, 13:{t:"num",v:5}, 14:{t:"num",v:2}, 15:{t:"num",v:51.75},
- 16:{t:"num",v:700}, 17:{t:"num",v:9}, 18:{t:"num",v:15}, 19:{t:"term",v:"x² + 6x + 9",legacy:[6,9]}, 20:{t:"num",v:7},
+ 1:{t:"frac",v:[1,120]}, 2:{t:"frac",v:[1,2]}, 3:{t:"num",v:0.473}, 4:{t:"num",v:3050}, 5:{t:"num",v:2},
+ 6:{t:"num",v:28}, 7:{t:"num",v:0.2}, 8:{t:"num",v:-14}, 9:{t:"mc",v:0}, 10:{t:"num",v:-8},
+ 11:{t:"term",v:"−3x + 24"}, 12:{t:"term",v:"8x + 23y"}, 13:{t:"num",v:2}, 14:{t:"num",v:-1}, 15:{t:"num",v:51.75},
+ 16:{t:"num",v:700}, 17:{t:"num",v:42.75}, 18:{t:"num",v:700}, 19:{t:"term",v:"x² + 6x + 9",legacy:[6,9]}, 20:{t:"num",v:7},
  21:{t:"num",v:36}, 22:{t:"num",v:8}, 23:{t:"num",v:10}, 24:{t:"mc",v:0}, 25:{t:"mc",v:0},
- 26:{t:"mc",v:0}, 27:{t:"mc",v:0}, 28:{t:"mc",v:0}
+ 26:{t:"mc",v:0}, 27:{t:"mc",v:0}, 28:{t:"mc",v:0},
+ 29:{t:"term",v:"16x² − 8xy + y²"}, 30:{t:"frac",v:[1,8]}, 31:{t:"num",v:63}, 32:{t:"num",v:12}, 33:{t:"num",v:24.24},
+ 34:{t:"txt",v:"geht nicht"}, 35:{t:"txt",v:"der Winkelhalbierenden"}, 36:{t:"num",v:30},
+ 37:{t:"term",v:"3(2a + b − 3c)"}, 38:{t:"term",v:"(3x + 2y + z)/6"}
 };
 
 /* ---------- Fertigkeiten (Matrix inkl. abgenommener App-Titel) ---------- */
@@ -200,16 +220,19 @@ const SKILLS = [
  {id:"A4", rang:"A", titel:"Gleichungen lösen – Schritt für Schritt", leicht:13, mittel:14},
  {id:"A5", rang:"A", titel:"Prozente durchschauen", leicht:15, mittel:16},
  {id:"A6", rang:"A", titel:"Der Dreisatz – dein Alltagswerkzeug", leicht:17, mittel:18},
- {id:"B1", rang:"B", titel:"Die binomischen Formeln knacken", tasks:[19]},
- {id:"B2", rang:"B", titel:"Potenzen – kurz geschrieben, viel drin", tasks:[20]},
- {id:"B3", rang:"B", titel:"Winkel-Detektiv", tasks:[21]},
- {id:"B4", rang:"B", titel:"Daten auf einen Blick", tasks:[22]},
- {id:"B5", rang:"B", titel:"Zinsen verstehen", tasks:[23]},
- {id:"C1", rang:"C", titel:"Dreiecke konstruieren wie ein Profi", tasks:[24]},
- {id:"C2", rang:"C", titel:"Zirkel und Lineal – deine Werkzeuge", tasks:[25]},
- {id:"C3", rang:"C", titel:"Der Trick mit dem Halbkreis (Satz des Thales)", tasks:[26]},
- {id:"C4", rang:"C", titel:"Terme rückwärts – Faktorisieren", tasks:[27]},
- {id:"C5", rang:"C", titel:"Term-Profi: mehrere Variablen", tasks:[28]},
+ /* 1.54: B- und C-Themen haben ZWEI Aufgaben (Anweisung Annette 18.08.2026).
+    B: beide auf mittlerem Niveau. C: die Multiple-Choice-Frage plus eine OFFENE Aufgabe –
+    damit entscheidet nicht mehr ein einzelnes Kreuz ueber ein ganzes Thema. */
+ {id:"B1", rang:"B", titel:"Die binomischen Formeln knacken", tasks:[19,29]},
+ {id:"B2", rang:"B", titel:"Potenzen – kurz geschrieben, viel drin", tasks:[20,30]},
+ {id:"B3", rang:"B", titel:"Winkel-Detektiv", tasks:[21,31]},
+ {id:"B4", rang:"B", titel:"Daten auf einen Blick", tasks:[22,32]},
+ {id:"B5", rang:"B", titel:"Zinsen verstehen", tasks:[23,33]},
+ {id:"C1", rang:"C", titel:"Dreiecke konstruieren wie ein Profi", tasks:[24,34]},
+ {id:"C2", rang:"C", titel:"Zirkel und Lineal – deine Werkzeuge", tasks:[25,35]},
+ {id:"C3", rang:"C", titel:"Der Trick mit dem Halbkreis (Satz des Thales)", tasks:[26,36]},
+ {id:"C4", rang:"C", titel:"Terme rückwärts – Faktorisieren", tasks:[27,37]},
+ {id:"C5", rang:"C", titel:"Term-Profi: mehrere Variablen", tasks:[28,38]},
 ];
 const KERN = [7,8,9,10,11,12,13,14,15,16]; // Mini-Probe-Aufgaben: A1–A5 (F hat keinen HWNN-Knopf)
 
@@ -247,8 +270,9 @@ function isCorrect(nr, ans){
       const a=parseNum(String(ans[0])), b=parseNum(String(ans[1]));
       return isFinite(a)&&isFinite(b)&&Math.abs(a-k.legacy[0])<0.005&&Math.abs(b-k.legacy[1])<0.005;
     }
-    return termEq(String(ans), k.v)===true; // ganzer Term inkl. Vorzeichen (Reihenfolge/Schreibweise egal)
+    return solMatches(k.v, String(ans))===true;  // 1.54: derselbe Termrechner wie beim Üben (auch Klammerformen)
   }
+  if(k.t==="txt") return solMatches(k.v, String(ans))===true;   // 1.54: kurze Textantworten ("geht nicht")
   return false;
 }
 
@@ -277,8 +301,14 @@ function diagnose(answers, hwnn){
       else if(l==="h") out[sk.id]="optional";
       else out[sk.id]="plan";                                          // leicht falsch/leer → von Beginn an
     } else {
-      const r=taskResult(sk.tasks[0], answers, hwnn);
-      out[sk.id] = r==="r" ? "sitzt" : (r==="h" ? "optional" : "plan");
+      /* 1.54 (Anweisung Annette 18.08.2026): B- und C-Themen haben ZWEI Aufgaben, beide auf
+         mittlerem Niveau. „Sitzt" gilt nur, wenn BEIDE richtig sind – ein einzelnes geratenes
+         Kreuz kann kein ganzes Thema mehr aus dem Plan nehmen. Weil beide gleich schwer sind,
+         gibt es hier kein „ab der Mitte". HWNN zaehlt wie bisher nie als Luecke. */
+      const rs=sk.tasks.map(n=>taskResult(n, answers, hwnn));
+      if(rs.every(r=>r==="r")) out[sk.id]="sitzt";
+      else if(rs.every(r=>r==="r"||r==="h") && rs.some(r=>r==="h")) out[sk.id]="optional";
+      else out[sk.id]="plan";
     }
   }
   return out;
@@ -359,8 +389,11 @@ function loesungText(t){
   const k=KEY[t.nr];
   if(t.nr===20) return "2⁷ (Hochzahl 7)";
   if(k.t==="mc") return t.opts[k.v];
-  if(k.t==="frac") return k.v[0]+"/"+k.v[1]+" (= 1 1/9)";
-  if(k.t==="term") return (t.label&&/=$/.test(t.label.trim())?t.label+" ":"")+k.v;
+  if(k.t==="frac"){                       // 1.54: gemischte Zahl nur nennen, wenn der Bruch unecht ist
+    const [z,n]=k.v; const g=Math.floor(Math.abs(z)/n), r=Math.abs(z)%n;
+    return z+"/"+n+(Math.abs(z)>n&&r?" (= "+(z<0?"−":"")+g+" "+r+"/"+n+")":"");
+  }
+  if(k.t==="term"||k.t==="txt") return (t.label&&/=$/.test(t.label.trim())?t.label+" ":"")+k.v;
   return fmtVal(t,k.v);
 }
 function eigeneText(t){
@@ -586,9 +619,8 @@ function renderTextT(t){
   // escBase statt esc: Im Check bleiben Tipp-Beispiele fürs TIPPEN („z. B. 3/4“) im Schrägstrich-Format –
   // angezeigte Brüche stehen dort als FRAC-Platzhalter und werden hier gestapelt.
   let h=gliedere(escBase(t));
-  h=h.replace(/FRAC23/g,'<span class="frac"><span class="num">2</span><span class="den">3</span></span>');
-  h=h.replace(/FRAC49/g,'<span class="frac"><span class="num">4</span><span class="den">9</span></span>');
-  h=h.replace(/FRAC35/g,'<span class="frac"><span class="num">3</span><span class="den">5</span></span>');
+  // 1.54: allgemeiner Platzhalter FRAC<Zaehler><Nenner> – der Zaehler darf auch eine Variable sein (FRACx2)
+  h=h.replace(/FRAC([0-9a-zA-Z])([0-9]+)/g, (m,z,n)=>'<span class="frac"><span class="num">'+z+'</span><span class="den">'+n+'</span></span>');
   return h;
 }
 let notiertTimer=null;
@@ -677,7 +709,7 @@ function render(){
   if(!S) initS();
   setStatus();
   if(S.screen==="task") return renderTask();
-  if(S.screen==="teil1ende") return renderTeil1Ende();
+  if(S.screen==="teil1ende"||S.screen==="teilende") return renderTeilEnde();
   if(S.screen==="ende") return renderEnde();
   if(S.screen==="day") return renderDay();
   const R={start:renderStart, anpassen:renderAnpassen, plan:renderPlan, fortschritt:renderFortschritt,
@@ -771,13 +803,13 @@ function renderTask(){
   if(!t){ return show("ende"); }
   const total=TASKS.length, pos=S.idx+1;
   let inner='<div class="row" style="justify-content:space-between">'+
-    '<span class="pill">Teil '+t.teil+'</span>'+
+    '<span class="pill">Teil '+t.teil+' von 3</span>'+
     '<span class="muted" style="font-size:.9rem">Aufgabe '+pos+' von '+total+'</span></div>'+
     '<div class="bar"><div style="width:'+Math.round(100*(pos-1)/total)+'%"></div></div>';
-  if(t.teil===2 && (S.idx===0 || TASKS[S.idx-1].teil===1)){
-    inner+='<div class="info"><em>'+esc(TXT.teil2Intro)+'</em></div>';
+  if(t.teil>1 && (S.idx===0 || TASKS[S.idx-1].teil!==t.teil)){          // 1.54: drei Teile statt zwei
+    inner+='<div class="info"><em>'+esc(t.teil===2?TXT.teil2Intro:TXT.teil3Intro)+'</em></div>';
   }
-  if(t.nr===27 && S.hwnn[19]){                              // Konsistenzregel B1 → C4 (v4.1)
+  if((t.nr===27||t.nr===37) && S.hwnn[19]){                 // Konsistenzregel B1 → C4 (v4.1, 1.54 auch für die offene Aufgabe)
     inner+='<div class="info">'+esc(TXT.konsistenz)+'</div>';
   }
   inner+='<div class="prompt">'+renderTextT(t.text)+'</div>';
@@ -804,7 +836,10 @@ function renderTask(){
   mountScratch($("scratchhost"), t.nr);
 
   function goNext(){
-    if(t.nr===18){ S.pausedAfterTeil1=false; return show("teil1ende"); }
+    const naechste=TASKS[S.idx+1];
+    if(naechste && naechste.teil!==t.teil){                              // 1.54: Pause nach JEDEM Teil
+      S.pausedAfterTeil1=false; S.teilPause=t.teil; save(); return show("teilende");
+    }
     if(S.idx+1>=TASKS.length){ S.done=true; save(); return show("ende"); }
     S.idx++; save(); render(); window.scrollTo(0,0); pushHist();
   }
@@ -844,13 +879,19 @@ function renderTask(){
   $("skipBtn").addEventListener("click",goNext);
 }
 
-function renderTeil1Ende(){
+function renderTeilEnde(){
+  /* 1.54: Der Check hat drei Teile (Entscheidung Annette 18.08.2026) – nach JEDEM Teil gibt es
+     dieselbe Pausenfrage. `S.teilPause` merkt sich, welcher Teil gerade geschafft ist. */
+  const fertig = S.teilPause || 1;
   main.innerHTML='<div class="card">'+
-    '<div class="banner"><strong><em>'+esc(TXT.teil1Ende)+'</em></strong></div>'+
+    '<div class="banner"><strong><em>'+esc(fertig===1?TXT.teil1Ende:TXT.teil2Ende)+'</em></strong></div>'+
     '<button class="btn block" id="weiterBtn">Direkt weitermachen</button>'+
     '<button class="btn ghost block" id="morgenBtn">Morgen weitermachen</button>'+
   '</div>';
-  $("weiterBtn").addEventListener("click",()=>{ S.teil2StartedAt=new Date().toISOString(); S.idx=TASKS.findIndex(x=>x.teil===2); show("task"); });
+  $("weiterBtn").addEventListener("click",()=>{
+    if(fertig===1) S.teil2StartedAt=new Date().toISOString();
+    const i=TASKS.findIndex(x=>x.teil===fertig+1);
+    S.idx=i<0?TASKS.length-1:i; save(); show("task"); });
   $("morgenBtn").addEventListener("click",()=>{ S.pausedAfterTeil1=true; save();
     main.innerHTML='<div class="card"><div class="banner"><em>Eine Pause ist kein Rückschritt. Weiter geht’s, wann du willst – '+esc(TXT.morgenWeiter.toLowerCase())+'</em></div><button class="btn block" id="homeBtn">Zur Startseite</button></div>';
     $("homeBtn").addEventListener("click",()=>show("start")); });
@@ -975,7 +1016,10 @@ function isTermLike(t){
      dabei weg - dadurch galt "441 und 499" als richtig. Bindewoerter schliessen den Termweg aus. */
   if(/(^|[^a-zäöüß])(und|oder|bzw|sowie|bis)([^a-zäöüß]|$)/i.test(String(t))) return false;
   const n=termNorm(t);
-  return /^[+\-]?[0-9a-zα-ω^+\-]+$/.test(n) && /[a-zα-ω]/.test(n) && !/[a-zα-ω]{5,}/.test(n);
+  /* 1.54: drei Buchstaben am Stueck sind ein WORT, kein Term. Vorher galt „wahr" als Produkt
+     w·a·h·r und die richtige Antwort „Ja" wurde falsch gewertet. Variablenprodukte im Bestand
+     haben hoechstens zwei Buchstaben am Stueck (3ab, 6xy). */
+  return /^[+\-]?[0-9a-zα-ω^+\-]+$/.test(n) && /[a-zα-ω]/.test(n) && !/[a-zα-ω]{3,}/.test(n);
 }
 function monoKey(m){ // "16x^2" -> "16|x^2" · "-8xy" -> "-8|x^1,y^1" · "y^2" -> "1|y^2"
   let sign=1, t=m;
@@ -1351,12 +1395,19 @@ function solMatches(sol, input){
   const fast=w=>{ if(/\d/.test(c2)||c2.indexOf(" ")>=0||c2.length<5) return false;
     const d=lev(stamm(w),stamm(c2)); return d<=(c2.length>=8?2:1); };
   if(fast(n2)) return true;
-  const W=["ja","nein","richtig","falsch"];
+  /* 1.54 (Befund 18.08.2026): Eine C2-Aufgabe hat die Loesung „wahr" – „Ja", „richtig" und
+     „stimmt" wurden als FALSCH gewertet, weil das Woerterbuch nur ja/nein/richtig/falsch als
+     LOESUNGSwort kannte. Jetzt stehen alle Ja/Nein-Woerter auf beiden Seiten. */
+  /* Ja/Nein-Antworten: geprueft wird der GANZE Kern, nicht nur das erste Wort – sonst faellt
+     „geht nicht" durch das Raster (1.54). POS/NEG enthalten die ueblichen Formulierungen. */
+  const POS=["ja","richtig","stimmt","wahr","geht","stimmt so","trifft zu"];
+  const NEG=["nein","falsch","geht nicht","stimmt nicht","unmöglich","nein geht nicht","nicht möglich","geht nicht mehr","trifft nicht zu"];
+  const kl=t=>POS.includes(t)?1:(NEG.includes(t)?-1:0);
+  const ksVoll=kl(c2.replace(/[.,;!?]+$/,""));
   const first=c2.split(/[\s,]+/)[0];
-  if(W.includes(first)){
-    const POS=["ja","richtig","stimmt","wahr"], NEG=["nein","falsch","geht nicht","stimmt nicht","unmöglich","nein geht nicht"];
-    const kl=t=>POS.includes(t)?1:(NEG.includes(t)?-1:0);
-    const ks=kl(first)||((first==="ja"||first==="richtig")?1:-1), ki=kl(n2.replace(/[.,;!?]+$/,""));
+  if(ksVoll!==0 || ["ja","nein","richtig","falsch","wahr","stimmt"].includes(first)){
+    const ks=ksVoll||kl(first)||((first==="ja"||first==="richtig")?1:-1);
+    const ki=kl(n2.replace(/[.,;!?]+$/,""));
     if(ki!==0) return ks===ki;
     return null; // freie Formulierung auf Ja/Nein-Frage → lieber selbst vergleichen
   }
