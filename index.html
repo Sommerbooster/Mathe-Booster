@@ -124,7 +124,7 @@ footer.legal a{color:var(--color-muted);}
 
 /* Versionsnummer: bei JEDER Änderung an dieser Datei hochzählen (Historie im PROJEKTSTATUS).
    Sichtbar unten auf der Info-Seite – so lässt sich live prüfen, welcher Stand veröffentlicht ist. */
-const APP_VERSION = "1.61 · 18.08.2026";
+const APP_VERSION = "1.62 · 19.08.2026";
 
 const TASKS = [
  /* 1.54 (Anweisung Annette 18.08.2026): JEDE Check-Aufgabe hat einen Buch-Anker und liegt NIE
@@ -206,6 +206,45 @@ const KEY = {
  37:{t:"term",v:"3(2a + b − 3c)"}, 38:{t:"term",v:"(3x + 2y + z)/6"}
 };
 
+/* ---------- 1.62: Der Loesungsschluessel des ALTEN Eingangschecks (Fassungen 1.49-1.53) ----------
+   In 1.54 wurde der Check neu aufgebaut: 38 statt 28 Aufgaben, und 13 der alten Nummern tragen
+   seitdem eine andere Frage. Ein Lernstand speichert die Antwort unter ihrer NUMMER - ohne diese
+   Tabelle wuerde die Antwort eines Bestandskunden gegen eine Frage geprueft, die er nie gesehen
+   hat. Die Tabelle ist eine Momentaufnahme aus Engine-Basis_index_v149_Mathe7.html und wird
+   NIE wieder veraendert. Dauerpruefung: QS_Bestandskunden.js */
+const KEY28 = {
+ 1:{t:"num",v:8}, 2:{t:"frac",v:[10,9]}, 3:{t:"num",v:4.35}, 4:{t:"num",v:3050}, 5:{t:"num",v:60},
+ 6:{t:"num",v:28}, 7:{t:"num",v:5}, 8:{t:"num",v:11}, 9:{t:"mc",v:0}, 10:{t:"num",v:-8},
+ 11:{t:"mc",v:0}, 12:{t:"term",v:"−6x + 10",legacy:[-6,10]}, 13:{t:"num",v:5}, 14:{t:"num",v:2}, 15:{t:"num",v:51.75},
+ 16:{t:"num",v:700}, 17:{t:"num",v:9}, 18:{t:"num",v:15}, 19:{t:"term",v:"x² + 6x + 9",legacy:[6,9]}, 20:{t:"num",v:7},
+ 21:{t:"num",v:36}, 22:{t:"num",v:8}, 23:{t:"num",v:10}, 24:{t:"mc",v:0}, 25:{t:"mc",v:0},
+ 26:{t:"mc",v:0}, 27:{t:"mc",v:0}, 28:{t:"mc",v:0}
+};
+/* Bewertet eine Antwort mit dem ALTEN Schluessel - sonst Zeichen fuer Zeichen wie isCorrect. */
+function korrekt28(nr, ans){
+  const k=KEY28[nr]; if(k===undefined||ans===undefined||ans===null) return false;
+  if(k.t==="mc") return ans===k.v;
+  if(k.t==="num"){ const v=parseNum(String(ans)); return isFinite(v)&&Math.abs(v-k.v)<0.005; }
+  if(k.t==="frac"){ const v=parseFracValue(String(ans)); return isFinite(v)&&Math.abs(v-k.v[0]/k.v[1])<0.005; }
+  if(k.t==="term"){
+    if(Array.isArray(ans)){ if(!k.legacy||ans.length<2) return false;
+      const a=parseNum(String(ans[0])), b=parseNum(String(ans[1]));
+      return isFinite(a)&&isFinite(b)&&Math.abs(a-k.legacy[0])<0.005&&Math.abs(b-k.legacy[1])<0.005; }
+    return solMatches(k.v, String(ans))===true;
+  }
+  return false;
+}
+/* Stammt dieser Lernstand aus dem 28er-Check? Erkennungsmerkmal: Der Check gilt als geschafft,
+   es gibt Antworten im Bereich 1-28, und zu KEINER der Nummern 29-38 liegt etwas vor - die gab
+   es damals noch nicht. */
+function istAlterCheck(st){
+  if(!st || !st.done) return false;
+  const a=st.answers||{}, h=st.hwnn||{};
+  for(let nr=29; nr<=38; nr++) if(a[nr]!==undefined || h[nr]) return false;
+  for(let nr=1; nr<=28; nr++) if(a[nr]!==undefined || h[nr]) return true;
+  return false;
+}
+
 /* ---------- Fertigkeiten (Matrix inkl. abgenommener App-Titel) ---------- */
 const SKILLS = [
  {id:"F1", rang:"F", titel:"Rechnen ohne Stolpern", tasks:[1]},
@@ -282,6 +321,10 @@ function isCorrect(nr, ans){
 function taskResult(nr, answers, hwnn){
   if(hwnn && hwnn[nr]) return "h";
   if(answers[nr]===undefined) return "x";
+  /* 1.62: Jede Antwort wird mit dem Schluessel bewertet, der zu der Frage gehoert, die das Kind
+     WIRKLICH gesehen hat. Bei einem Lernstand aus dem 28er-Check sind das fuer die Nummern 1-28
+     die alten Fragen; alles ab 29 hat das Kind erst in der heutigen Fassung beantwortet. */
+  if(typeof S!=="undefined" && S && S.check28 && nr<=28) return korrekt28(nr, answers[nr]) ? "r" : "f";
   return isCorrect(nr, answers[nr]) ? "r" : "f";
 }
 function diagnose(answers, hwnn){
@@ -305,7 +348,15 @@ function diagnose(answers, hwnn){
          mittlerem Niveau. „Sitzt" gilt nur, wenn BEIDE richtig sind – ein einzelnes geratenes
          Kreuz kann kein ganzes Thema mehr aus dem Plan nehmen. Weil beide gleich schwer sind,
          gibt es hier kein „ab der Mitte". HWNN zaehlt wie bisher nie als Luecke. */
-      const rs=sk.tasks.map(n=>taskResult(n, answers, hwnn));
+      let nrs=sk.tasks;
+      /* 1.62: Ein Lernstand aus dem 28er-Check kann die zweite Aufgabe gar nicht beantwortet
+         haben - es gab sie noch nicht. Dann zaehlt, was das Kind GEFRAGT wurde. Sobald es die
+         neue Aufgabe nachholt, gilt wieder die schaerfere Regel aus 1.54 (beide richtig). */
+      if(typeof S!=="undefined" && S && S.check28){
+        const gesehen=nrs.filter(n=>(answers[n]!==undefined)||(hwnn&&hwnn[n]));
+        if(gesehen.length) nrs=gesehen;
+      }
+      const rs=nrs.map(n=>taskResult(n, answers, hwnn));
       if(rs.every(r=>r==="r")) out[sk.id]="sitzt";
       else if(rs.every(r=>r==="r"||r==="h") && rs.some(r=>r==="h")) out[sk.id]="optional";
       else out[sk.id]="plan";
@@ -582,12 +633,54 @@ function initS(){
   if(!S.gezeigt) S.gezeigt={}; // 1.50 (Anweisung Annette 17.08.2026): JEDE jemals gezeigte Aufgabe – Lerntag UND
                                // Wiederholmix. Grundlage der Doppelungs-Sperre über ALLE Bausteine (Schlüssel: Thema|Aufgabe).
   if(!S.bonusDone) S.bonusDone={}; // im Bonus abgeschlossene Themen (gelten als gelernt)
+  if(!S.themenDone) S.themenDone={}; // 1.62: erledigte Lerntage unter ihrem THEMA (siehe tagFertig)
+  /* 1.62: Einmalig erkennen, ob dieser Lernstand aus dem 28er-Check stammt. Danach steht es
+     fest im Lernstand - die Erkennung darf nicht bei jedem Laden neu raten, sonst kippt sie,
+     sobald das Kind eine der neuen Aufgaben beantwortet hat. */
+  if(S.check28===undefined){ S.check28 = istAlterCheck(S); if(S.check28) S.hinweis162=true; }
+  /* 1.62: Lernstaende von vor 1.62 kennen nur Tagesnummern. Damit der erste neue Lerntag nicht
+     alle alten Haken entwertet (themenDone waere dann plotzlich nicht mehr leer), werden die
+     bereits erledigten Tage EINMALIG auf ihr Thema umgeschrieben. Das ist genau hier korrekt,
+     weil der Plan an dieser Stelle noch der alte ist - der Umzug des 28er-Checks sorgt dafuer. */
+  if(!S.themenUmzug && Object.keys(S.daysDone).length && !Object.keys(S.themenDone).length){
+    try{
+      const p0=buildPlan(effectiveDiag(),S.config);
+      for(const d of p0.days){
+        if(d.id==="CHECK"||d.id==="MIX") continue;
+        if(S.daysDone[d.tag]) S.themenDone[themaKey(d)]=true;
+      }
+    }catch(e){ /* im Zweifel bleibt es bei den Tagesnummern */ }
+  }
+  S.themenUmzug=true;
   save();
 }
 function selectProfile(id){
   PID=id; localStorage.setItem("mathebooster_active",id); PROF_VIEW=false;
   initS(); render(); window.scrollTo(0,0);
   try{ history.replaceState({mb:histSnap()},""); }catch(e){} // Basis-Eintrag für die Browser-Pfeile
+}
+
+/* 1.62: Einmalige Karte fuer Bestandskunden aus dem 28er-Check. Sie meldet KEINEN Fehler -
+   der Plan stimmt an dieser Stelle schon wieder. Sie erzaehlt, was dazugekommen ist, und
+   macht ein Angebot. Beide Knoepfe sind richtige Antworten. */
+function hinweis162Html(){
+  if(!S || !S.hinweis162) return "";
+  return '<div class="card" style="border-left:4px solid var(--secondary)">'+
+    '<strong>Dein Booster ist gewachsen.</strong>'+
+    '<p style="margin-top:10px">Dein Plan bleibt genau so, wie er war – und alles, was du geschafft hast, ist gespeichert.</p>'+
+    '<p>Neu dazugekommen sind <strong>10 Check-Aufgaben</strong> aus dem Trainingsbuch und ein <strong>Abschluss-Check</strong>, der dir am Ende zeigt, was jetzt wirklich sitzt.</p>'+
+    '<p>Nachholen musst du nichts. Wenn du magst, machst du die 10 neuen Aufgaben – dann ist dein Plan noch genauer auf dich zugeschnitten.</p>'+
+    '<div class="row" style="margin-top:14px">'+
+      '<button class="btn" id="h162ja">Klar, zeig sie mir</button>'+
+      '<button class="btn ghost" id="h162spaeter">Später – weiter zu meinem Plan</button>'+
+    '</div></div>';
+}
+function hinweis162Binden(){
+  if($("h162ja")) $("h162ja").addEventListener("click",()=>{
+    S.hinweis162=false; S.nachcheck=true; S.done=false;
+    const i=TASKS.findIndex(t=>t.nr===29); S.idx=i<0?0:i; save(); show("task");
+  });
+  if($("h162spaeter")) $("h162spaeter").addEventListener("click",()=>{ S.hinweis162=false; save(); render(); });
 }
 
 /* Sicherheitsnetz: Fertigkeiten, die im Mix 2× danebenlagen, kommen zurück in den Plan */
@@ -787,6 +880,7 @@ function renderProfiles(){
 function renderStart(){
   const started=answered()>0&&!S.done;
   main.innerHTML=
+  hinweis162Html()+
   '<div class="card">'+greetHtml()+
     '<span class="pill">Dein Mathe-Check</span>'+
     '<p style="margin-top:14px">'+esc(TXT.begruessung1)+'</p>'+
@@ -810,6 +904,7 @@ function renderStart(){
     const next=TASKS.findIndex(t=>S.answers[t.nr]===undefined&&!S.hwnn[t.nr]);
     S.idx=next<0?0:next; show("task"); });
   if($("planBtn")) $("planBtn").addEventListener("click",()=>show(S.planCreated?"plan":"anpassen"));
+  hinweis162Binden();
 }
 
 function renderTask(){
@@ -979,16 +1074,18 @@ function bonusCard(plan, diag){
   '</div>';
 }
 function renderPlan(){
+  /* 1.62: Die Karte steht ueber dem Plan – dort landet ein Bestandskunde nach dem Neuladen. */
   if(!S.done){ return show("start"); }
   const diag=effectiveDiag();
   const plan=buildPlan(diag,S.config);
   const sitzt=SKILLS.filter(s=>diag[s.id]==="sitzt");
   let rows=plan.days.map(d=>{
-    const done=d.id==="CHECK"||S.daysDone[d.tag];
+    const done=tagFertig(d);
     const klick=d.id!=="CHECK";
     return '<tr'+(klick?' data-tag="'+d.tag+'" style="cursor:pointer"':'')+(d.tag===nextOpenDay(plan)?' class="today"':'')+'><td>'+d.tag+'</td><td>'+esc(d.thema)+(done?" ✓":"")+'</td></tr>';
   }).join("");
   main.innerHTML=
+  hinweis162Html()+
   '<div class="card">'+
     '<span class="pill">Dein Lernplan</span>'+
     '<p style="margin-top:12px"><strong>'+sitzt.length+' von '+SKILLS.length+' Themen kannst du schon – die sparst du dir komplett.</strong> <span class="muted">Der Rest ist dein Plan: '+plan.cfg.wochen+' Wochen · '+plan.cfg.tage+' Tage pro Woche · '+plan.cfg.minuten+' Minuten am Tag.</span></p>'+
@@ -1010,8 +1107,25 @@ function renderPlan(){
   document.querySelectorAll("[data-bonus]").forEach(btn=>btn.addEventListener("click",()=>{ S.bonus={id:btn.dataset.bonus, abMittel:btn.dataset.abm==="1"}; S.curDay="bonus"; S.unit=null; show("day"); }));
   $("cfgBtn").addEventListener("click",()=>show("anpassen"));
   $("printBtn").addEventListener("click",()=>window.print());
+  hinweis162Binden();
 }
-function nextOpenDay(plan){ for(const d of plan.days){ if(d.id!=="CHECK"&&!S.daysDone[d.tag]) return d.tag; } return -1; }
+/* 1.62 (Befund 19.08.2026): Erledigte Tage werden zusaetzlich unter ihrem THEMA gemerkt.
+   Vorher hing der Haken allein an der Tagesnummer. Aendert sich der Plan - weil die Diagnose
+   sich aendert oder das Kind den Plan anpasst - wandert ein Thema auf eine andere Tagesnummer.
+   Der Haken blieb dann auf der Nummer sitzen und lag plotzlich auf einem Thema, das das Kind
+   nie geuebt hat; das echte Thema stand wieder als offen da. Ab jetzt folgt der Haken dem Thema.
+   Lernstaende ohne Themen-Merker (alles vor 1.62) zaehlen weiter nach Tagesnummer - fuer sie
+   ist das richtig, weil der Umzug des 28er-Checks den Planwechsel gar nicht erst ausloest. */
+function themaKey(d){ return d.id+"|"+(d.block||0); }
+function tagFertig(d){
+  if(d.id==="CHECK") return true;
+  if(d.id==="MIX") return !!S.daysDone[d.tag];
+  const tm=S.themenDone||{};
+  if(Object.keys(tm).length) return !!tm[themaKey(d)];
+  return !!S.daysDone[d.tag];
+}
+
+function nextOpenDay(plan){ for(const d of plan.days){ if(d.id!=="CHECK"&&!tagFertig(d)) return d.tag; } return -1; }
 
 /* ---------- Lerneinheiten-Player (M2.4) ---------- */
 /* Antwort-Matching (erweitert nach Beta-Feedback 29.07.2026):
@@ -1676,8 +1790,8 @@ function gelernteSkills(){
   /* 1.52: Ein Thema gilt erst als gelernt, wenn ALLE seine Lerntage erledigt sind. Sonst zöge der
      Wiederholmix schon nach Tag 1 aus dem Vorrat, den Tag 2 desselben Themas noch braucht. */
   const offen=new Set();
-  for(const d of plan.days){ if(d.id==="CHECK"||d.id==="MIX") continue; if(!S.daysDone[d.tag]) offen.add(d.id); }
-  for(const d of plan.days){ if(d.id!=="CHECK"&&d.id!=="MIX"&&S.daysDone[d.tag]&&!offen.has(d.id)) g.add(d.id); }
+  for(const d of plan.days){ if(d.id==="CHECK"||d.id==="MIX") continue; if(!tagFertig(d)) offen.add(d.id); }
+  for(const d of plan.days){ if(d.id!=="CHECK"&&d.id!=="MIX"&&tagFertig(d)&&!offen.has(d.id)) g.add(d.id); }
   for(const id of Object.keys(S.bonusDone||{})) g.add(id); // im Bonus abgeschlossene Themen zaehlen ebenfalls als gelernt
   return g;
 }
@@ -1935,6 +2049,7 @@ function renderMixDay(day){
 }
 function renderDayDone(day){
   if(typeof day.tag==="number") S.daysDone[day.tag]=true;
+  if(day.id!=="CHECK"&&day.id!=="MIX"){ if(!S.themenDone) S.themenDone={}; S.themenDone[themaKey(day)]=true; } // 1.62: Haken folgt dem Thema
   if(day.tag==="Bonus"&&day.id){ (S.bonusDone||(S.bonusDone={}))[day.id]=true; } // Bonus-Thema gilt als gelernt (fliesst in den Wiederholmix ein)
   S.unit=null; save(); confetti();
   const q=S.unit&&S.unit.gesamt?(" "+S.unit.richtig+" von "+S.unit.gesamt+" Aufgaben direkt richtig."):"";
@@ -2090,7 +2205,7 @@ function renderAbErgebnis(){
 function renderPlanDone(){
   const diag=effectiveDiag();
   const plan=buildPlan(diag,S.config);
-  const gelernt=plan.days.filter(d=>typeof d.tag==="number"&&d.id!=="MIX"&&d.id!=="CHECK"&&S.daysDone[d.tag]).length;
+  const gelernt=plan.days.filter(d=>typeof d.tag==="number"&&d.id!=="MIX"&&d.id!=="CHECK"&&tagFertig(d)).length;
   const sitzt=SKILLS.filter(s=>diag[s.id]==="sitzt").length;
   // schneller als geplant? Kalendertage seit Start vs. geplante Laufzeit
   let schnell=false;
